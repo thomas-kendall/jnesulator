@@ -12,12 +12,12 @@ import jnesulator.core.nes.CPURAM;
  */
 public class ActionReplay {
 
-	private static final int RAM_SIZE = 0x07FF;
-	private final CPURAM cpuram;
+	private static int RAM_SIZE = 0x07FF;
+	private CPURAM cpuram;
 	// Memory patches for Pro Action Replay codes
-	private final HashMap<Integer, Patch> patches = new HashMap<>();
+	private HashMap<Integer, Patch> patches = new HashMap<>();
 	// List of addresses for the "find code" feature
-	private final List<Integer> foundAddresses = new ArrayList<>();
+	private List<Integer> foundAddresses = new ArrayList<>();
 
 	/**
 	 * Creates a new Pro Action Replay device which will act on the given

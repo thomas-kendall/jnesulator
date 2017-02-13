@@ -1,10 +1,13 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Mapper48 extends Mapper {
+public class Mapper48 extends BaseMapper {
 
 	int prgbank0, prgbank1 = 0;
+
 	int[] chrbank = { 0, 0, 0, 0, 0, 0 };
 	private int irqctrreload = 0;
 	private int irqctr = 0;
@@ -12,8 +15,12 @@ public class Mapper48 extends Mapper {
 	private boolean irqreload = false;
 	private boolean interrupted = false;
 
+	public Mapper48(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xFFFF) {
 			super.cartWrite(addr, data);
 			return;
@@ -75,7 +82,7 @@ public class Mapper48 extends Mapper {
 			case 3:
 				// any value here disables IRQ and acknowledges
 				if (interrupted) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				interrupted = false;
 				irqenable = false;
@@ -85,7 +92,7 @@ public class Mapper48 extends Mapper {
 		} else if (addr <= 0xFFFF) {
 			switch (addr & 3) {
 			case 0:
-				setmirroring(((data & (utils.BIT6)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+				setmirroring(((data & (Utils.BIT6)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 				break;
 			}
 		}
@@ -93,9 +100,8 @@ public class Mapper48 extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// swappable bank
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
@@ -117,7 +123,7 @@ public class Mapper48 extends Mapper {
 			// 240.
 			return;
 		}
-		if (!ppu.mmc3CounterClocking()) {
+		if (!getNES().getPPU().mmc3CounterClocking()) {
 			return;
 		}
 
@@ -132,7 +138,7 @@ public class Mapper48 extends Mapper {
 				// irqs stop being generated if reload set to zero
 			}
 			if (irqenable && !interrupted) {
-				++cpu.interrupt;
+				++getNES().getCPU().interrupt;
 				interrupted = true;
 			}
 			irqctr = irqctrreload;

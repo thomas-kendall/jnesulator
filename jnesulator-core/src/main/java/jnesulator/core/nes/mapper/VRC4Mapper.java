@@ -1,8 +1,10 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class VRC4Mapper extends Mapper {
+public class VRC4Mapper extends BaseMapper {
 
 	int[][][] registerselectbits = { { { 1, 2 }, { 6, 7 } }, { { 2, 3 }, { 0, 1 } }, { { 3, 2 }, { 1, 0 } } };
 	int[][] registers;
@@ -14,8 +16,8 @@ public class VRC4Mapper extends Mapper {
 
 	int prescaler = 341;
 
-	public VRC4Mapper(int mappernum) {
-		super();
+	public VRC4Mapper(NES nes, int mappernum) {
+		super(nes);
 		switch (mappernum) {
 		// vrc4 has 3 different mapper numbers, for 3 different ways to assign
 		// the registers
@@ -35,7 +37,7 @@ public class VRC4Mapper extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -54,10 +56,10 @@ public class VRC4Mapper extends Mapper {
 					// vrc2 doesn't have single screen mirroring option
 					switch (data & 1) {
 					case 0:
-						setmirroring(Mapper.MirrorType.V_MIRROR);
+						setmirroring(MirrorType.V_MIRROR);
 						break;
 					case 1:
-						setmirroring(Mapper.MirrorType.H_MIRROR);
+						setmirroring(MirrorType.H_MIRROR);
 						break;
 					}
 				} else {
@@ -77,7 +79,7 @@ public class VRC4Mapper extends Mapper {
 					}
 				}
 			} else {
-				prgmode = ((data & (utils.BIT1)) != 0);
+				prgmode = ((data & (Utils.BIT1)) != 0);
 			}
 			break;
 		case 0xa:
@@ -112,22 +114,22 @@ public class VRC4Mapper extends Mapper {
 				}
 				// System.err.println("reload set to " + irqreload);
 			} else if (!bit0) {
-				irqack = ((data & (utils.BIT0)) != 0);
-				irqenable = ((data & (utils.BIT1)) != 0);
-				irqmode = ((data & (utils.BIT2)) != 0);
+				irqack = ((data & (Utils.BIT0)) != 0);
+				irqenable = ((data & (Utils.BIT1)) != 0);
+				irqmode = ((data & (Utils.BIT2)) != 0);
 				if (irqenable) {
 					irqcounter = irqreload;
 					prescaler = 341;
 				}
 				if (firedinterrupt) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				firedinterrupt = false;
 
 			} else {
 				irqenable = irqack;
 				if (firedinterrupt) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				firedinterrupt = false;
 			}
@@ -154,9 +156,8 @@ public class VRC4Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		super.loadrom();
-		// needs to be in every mapper. Fill with initial cfg
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			// map last banks in to start off
 			prg_map[32 - i] = prgsize - (1024 * i);
@@ -165,7 +166,7 @@ public class VRC4Mapper extends Mapper {
 			chr_map[i] = (1024 * i) & (chrsize - 1);
 		}
 		// detect Konami Wai Wai World on VRC2
-		System.err.println(utils.hex(crc));
+		System.err.println(Utils.hex(crc));
 		vrc2mirror = ((crc == 0xB790FF4CL) // ZnO trans (remember why it's a
 											// long...)
 				|| (crc == 0x2D953C3DL) // demiforce 3
@@ -182,7 +183,7 @@ public class VRC4Mapper extends Mapper {
 				// System.err.println("Interrupt @ Scanline " + scanline + "
 				// reload " + irqreload);
 				if (!firedinterrupt) {
-					++cpu.interrupt;
+					++getNES().getCPU().interrupt;
 				}
 				firedinterrupt = true;
 			} else {

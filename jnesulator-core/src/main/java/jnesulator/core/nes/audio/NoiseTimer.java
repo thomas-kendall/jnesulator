@@ -1,15 +1,15 @@
 package jnesulator.core.nes.audio;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.Utils;
 
 public class NoiseTimer extends Timer {
 
-	private final static int periodadd = 0;
+	private static int periodadd = 0;
 
 	public static int[] genvalues(int whichbit, int seed) {
 		int[] tehsuck = new int[(whichbit == 1) ? 32767 : 93];
 		for (int i = 0; i < tehsuck.length; ++i) {
-			seed = (seed >> 1) | ((((seed & (1 << whichbit)) != 0) ^ ((seed & (utils.BIT0)) != 0)) ? 16384 : 0);
+			seed = (seed >> 1) | ((((seed & (1 << whichbit)) != 0) ^ ((seed & (Utils.BIT0)) != 0)) ? 16384 : 0);
 			tehsuck[i] = seed;
 		}
 		return tehsuck;
@@ -26,7 +26,7 @@ public class NoiseTimer extends Timer {
 	}
 
 	@Override
-	public final void clock() {
+	public void clock() {
 		++divider;
 		// note: stay away from negative division to avoid rounding problems
 		int periods = (divider + period + periodadd) / (period + periodadd);
@@ -38,7 +38,7 @@ public class NoiseTimer extends Timer {
 	}
 
 	@Override
-	public final void clock(final int cycles) {
+	public void clock(int cycles) {
 		divider += cycles;
 		// note: stay away from negative division to avoid rounding problems
 		int periods = (divider + period + periodadd) / (period + periodadd);
@@ -50,12 +50,12 @@ public class NoiseTimer extends Timer {
 	}
 
 	@Override
-	public final int getval() {
+	public int getval() {
 		return (values[position] & 1);
 	}
 
 	@Override
-	public final void reset() {
+	public void reset() {
 		position = 0;
 	}
 
@@ -74,7 +74,7 @@ public class NoiseTimer extends Timer {
 	}
 
 	@Override
-	public final void setperiod(final int newperiod) {
+	public void setperiod(int newperiod) {
 		period = newperiod;
 	}
 }

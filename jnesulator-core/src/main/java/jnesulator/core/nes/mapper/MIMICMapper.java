@@ -1,23 +1,30 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class MIMICMapper extends Mapper {
+public class MIMICMapper extends BaseMapper {
 	// a stripped down mmc3 clone for namco/tengen games.
 	// almost everything using this is marked as mapper 4 and works fine like
 	// that
 
 	private int whichbank = 0;
+
 	private int[] chrreg = { 0, 0, 0, 0, 0, 0 };
 
+	public MIMICMapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
 		}
 		// bankswitches here
-		System.err.println(utils.hex(addr) + " " + utils.hex(data));
+		System.err.println(Utils.hex(addr) + " " + Utils.hex(data));
 		if (addr == 0x8001) {
 			data &= 0x3f;
 			if (whichbank <= 5) {
@@ -42,9 +49,8 @@ public class MIMICMapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			prg_map[32 - i] = prgsize - (1024 * i);
 		}

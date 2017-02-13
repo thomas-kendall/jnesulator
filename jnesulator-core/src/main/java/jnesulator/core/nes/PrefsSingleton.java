@@ -2,6 +2,7 @@ package jnesulator.core.nes;
 
 import java.util.prefs.Preferences;
 
+// TODO: Move this out of the core application. Settings should be passed in to the classes.
 public class PrefsSingleton {
 
 	private static Preferences instance = null;

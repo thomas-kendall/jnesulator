@@ -1,12 +1,12 @@
 package jnesulator.core.nes.audio;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.Utils;
 
-public class Sunsoft5BSoundChip implements ExpansionSoundChip {
+public class Sunsoft5BSoundChip implements IExpansionSoundChip {
 	// not complete... missing volume envelopes and noise channel at the moment.
 	// sound test for Gimmick - Hold Select, push Start on title screen
 
-	private static final int[] VOLTBL = getvoltbl();
+	private static int[] VOLTBL = getvoltbl();
 
 	public static int[] getvoltbl() {
 		// the AY-3-8910 volume levels are NOT linear, but logarithmic.
@@ -19,34 +19,34 @@ public class Sunsoft5BSoundChip implements ExpansionSoundChip {
 		return vols;
 	}
 
-	private final Timer[] timers = { new SquareTimer(32), new SquareTimer(32), new SquareTimer(32) };
-	private final boolean[] enable = { false, false, false };
-	private final boolean[] useenvelope = { false, false, false };
-	private final int[] volume = { 0, 0, 0 };
+	private Timer[] timers = { new SquareTimer(32), new SquareTimer(32), new SquareTimer(32) };
+	private boolean[] enable = { false, false, false };
+	private boolean[] useenvelope = { false, false, false };
+	private int[] volume = { 0, 0, 0 };
 
 	int enval = 0;
 
 	@Override
-	public final void clock(final int cycle) {
+	public void clock(int cycle) {
 		clockenvelope(cycle);
 		timers[0].clock(cycle);
 		timers[1].clock(cycle);
 		timers[2].clock(cycle);
 	}
 
-	private void clockenvelope(final int cycles) {
+	private void clockenvelope(int cycles) {
 		enval = 0; // gimmick only uses the envelope to mute a channel.
 	}
 
 	@Override
-	public final int getval() {
+	public int getval() {
 		return (enable[0] ? ((useenvelope[0] ? enval : VOLTBL[volume[0]]) * timers[0].getval()) : 0)
 				+ (enable[1] ? ((useenvelope[1] ? enval : VOLTBL[volume[1]]) * timers[1].getval()) : 0)
 				+ (enable[2] ? ((useenvelope[2] ? enval : VOLTBL[volume[2]]) * timers[2].getval()) : 0);
 	}
 
 	@Override
-	public final void write(final int register, final int data) {
+	public void write(int register, int data) {
 		// System.err.println(register + " " + data);
 		switch (register) {
 		case 0:
@@ -74,15 +74,15 @@ public class Sunsoft5BSoundChip implements ExpansionSoundChip {
 			break;
 		case 8:
 			volume[0] = data & 0xf;
-			useenvelope[0] = ((data & (utils.BIT4)) != 0);
+			useenvelope[0] = ((data & (Utils.BIT4)) != 0);
 			break;
 		case 9:
 			volume[1] = data & 0xf;
-			useenvelope[1] = ((data & (utils.BIT4)) != 0);
+			useenvelope[1] = ((data & (Utils.BIT4)) != 0);
 			break;
 		case 10:
 			volume[2] = data & 0xf;
-			useenvelope[2] = ((data & (utils.BIT4)) != 0);
+			useenvelope[2] = ((data & (Utils.BIT4)) != 0);
 			break;
 		case 13:
 			enval = 15;

@@ -1,7 +1,8 @@
 package jnesulator.core.nes;
 
 import jnesulator.core.nes.mapper.BadMapperException;
-import jnesulator.core.nes.mapper.Mapper;
+import jnesulator.core.nes.mapper.MirrorType;
+import jnesulator.core.nes.mapper.TVType;
 
 public class ROMLoader {
 	// this is the oldest code in the project... I'm honestly ashamed
@@ -13,14 +14,14 @@ public class ROMLoader {
 	public String name;
 	public int prgsize;
 	public int chrsize;
-	public Mapper.MirrorType scrolltype;
-	public Mapper.TVType tvtype;
+	public MirrorType scrolltype;
+	public TVType tvtype;
 	public int mappertype;
 	public int submapper;
 	public int prgoff, chroff;
 	public boolean savesram = false;
 	public int[] header;
-	private final int[] therom;
+	private int[] therom;
 
 	public ROMLoader(String filename) {
 		therom = FileUtils.readfromfile(filename);
@@ -40,9 +41,9 @@ public class ROMLoader {
 		if (header[0] == 'N' && header[1] == 'E' && header[2] == 'S' && header[3] == 0x1A) {
 			// a valid iNES file, proceed
 
-			scrolltype = ((header[6] & (utils.BIT3)) != 0) ? Mapper.MirrorType.FOUR_SCREEN_MIRROR
-					: ((header[6] & (utils.BIT0)) != 0) ? Mapper.MirrorType.V_MIRROR : Mapper.MirrorType.H_MIRROR;
-			savesram = ((header[6] & (utils.BIT1)) != 0);
+			scrolltype = ((header[6] & (Utils.BIT3)) != 0) ? MirrorType.FOUR_SCREEN_MIRROR
+					: ((header[6] & (Utils.BIT0)) != 0) ? MirrorType.V_MIRROR : MirrorType.H_MIRROR;
+			savesram = ((header[6] & (Utils.BIT1)) != 0);
 			mappertype = (header[6] >> 4);
 			// detect NES 2.0 format for the rest of the header
 			if (((header[7] >> 2) & 3) == 2) {
@@ -65,11 +66,11 @@ public class ROMLoader {
 				// tv type is byte 12
 				if ((header[12] & 3) == 1) {
 					// pal mode only rom
-					tvtype = Mapper.TVType.PAL;
+					tvtype = TVType.PAL;
 					System.err.println("pal");
 				} else {
 					// if ntsc only or works on both we'll use ntsc
-					tvtype = Mapper.TVType.NTSC;
+					tvtype = TVType.NTSC;
 				}
 				// byte 13 is Vs. System palettes that i don't deal with yet
 				// byte 14 and 15 must be zero
@@ -91,19 +92,19 @@ public class ROMLoader {
 					// only consider upper bytes of mapper # if the end bytes
 					// are zero
 					mappertype += ((header[7] >> 4) << 4);
-					if (((header[9] & (utils.BIT0)) != 0)) {
+					if (((header[9] & (Utils.BIT0)) != 0)) {
 						// detect tv type though it's not really used
-						tvtype = Mapper.TVType.PAL;
+						tvtype = TVType.PAL;
 						System.err.println("pal header type 1");
 					} else if ((header[10] & 3) == 2) {
-						tvtype = Mapper.TVType.PAL;
+						tvtype = TVType.PAL;
 						System.err.println("pal header type 2");
 					} else {
-						tvtype = Mapper.TVType.NTSC;
+						tvtype = TVType.NTSC;
 					}
 				} else {
 					System.err.println("diskdude (please clean your roms)");
-					tvtype = Mapper.TVType.NTSC;
+					tvtype = TVType.NTSC;
 				}
 			}
 			// calc offsets; header not incl. here

@@ -2,10 +2,10 @@ package jnesulator.core.nes.video;
 
 public class NesColors {
 
-	private final static double att = 0.7;
+	private static final double att = 0.7;
 
-	public final static int[][] col = GetNESColors();
-	public final static byte[][][] colbytes = NESColorsToBytes(col);
+	public static final int[][] col = GetNESColors();
+	public static final byte[][][] colbytes = NESColorsToBytes(col);
 
 	private static int b(int col) {
 		return col & 0xff;

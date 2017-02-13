@@ -1,17 +1,24 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Action52Mapper extends Mapper {
+public class Action52Mapper extends BaseMapper {
 
 	int[] ram = new int[4];
+
 	int prgchip = 0;
 	int prgpage = 0;
 	int chrpage = 0;
 	boolean prgmode = false;
 
+	public Action52Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		// by default has wram at 0x6000 and cartridge at 0x8000-0xfff
 		// but some mappers have different so override for those
 		if (addr >= 0x8000) {
@@ -23,15 +30,15 @@ public class Action52Mapper extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr <= 0x5fff) {
 			ram[addr & 3] = data & 0xf;
 		} else if (addr >= 0x8000) {
 			chrpage = ((addr & 0xf) << 2) + (data & 3);
-			prgmode = ((addr & (utils.BIT5)) != 0);
+			prgmode = ((addr & (Utils.BIT5)) != 0);
 			prgpage = (addr >> 6) & 0x1f;
 			prgchip = (addr >> 11) & 3;
-			setmirroring((((addr & (utils.BIT13)) != 0)) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+			setmirroring((((addr & (Utils.BIT13)) != 0)) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 			for (int i = 0; i < 8; ++i) {
 				chr_map[i] = (1024 * (chrpage * 8 + i)) % chrsize;
 			}
@@ -63,8 +70,8 @@ public class Action52Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		super.loadrom();
+	public void loadrom(ROMLoader romLoader) throws BadMapperException {
+		super.loadrom(romLoader);
 		cartWrite(0x8000, 0);
 	}
 

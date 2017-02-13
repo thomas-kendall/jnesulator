@@ -1,8 +1,8 @@
 package jnesulator.core.nes.audio;
 
-public interface ExpansionSoundChip {
+public interface IExpansionSoundChip {
 
-	void clock(final int cycles);
+	void clock(int cycles);
 
 	int getval();
 

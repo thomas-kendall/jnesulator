@@ -7,7 +7,7 @@ import jnesulator.core.nes.NES;
 import jnesulator.core.nes.video.RGBRenderer;
 import jnesulator.core.nes.video.Renderer;
 
-public class HeadlessUI implements GUIInterface {
+public class HeadlessUI implements IGUI {
 
 	private NES nes;
 	private Renderer renderer;
@@ -49,10 +49,6 @@ public class HeadlessUI implements GUIInterface {
 
 	public void loadROM(String romToLoad) {
 		this.nes.loadROM(romToLoad);
-	}
-
-	@Override
-	public void loadROMs(String path) {
 	}
 
 	@Override

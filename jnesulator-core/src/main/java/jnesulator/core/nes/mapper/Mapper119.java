@@ -1,15 +1,21 @@
 package jnesulator.core.nes.mapper;
 
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+
 // TQROM mapper
 // mmc3 derivative with chr ram and rom
 public class Mapper119 extends MMC3Mapper {
 
 	int[] chrRam = new int[8192];
 
+	public Mapper119(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// on startup:
 		for (int i = 0; i < 8; ++i) {
 			prg_map[i] = (1024 * i);
@@ -31,7 +37,7 @@ public class Mapper119 extends MMC3Mapper {
 	}
 
 	@Override
-	public int ppuRead(final int addr) {
+	public int ppuRead(int addr) {
 		if (addr < 0x2000) {
 			checkA12(addr);
 			return (chr_map[addr >> 10] > 65535) ? chrRam[(chr_map[addr >> 10] + (addr & 1023)) & 8191]
@@ -42,7 +48,7 @@ public class Mapper119 extends MMC3Mapper {
 	}
 
 	@Override
-	public void ppuWrite(final int addr, final int data) {
+	public void ppuWrite(int addr, int data) {
 		if (addr < 0x2000) {
 			checkA12(addr);
 			if (chr_map[addr >> 10] > 63) {

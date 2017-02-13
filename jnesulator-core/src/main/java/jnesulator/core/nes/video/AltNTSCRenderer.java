@@ -2,7 +2,7 @@ package jnesulator.core.nes.video;
 
 import java.awt.image.BufferedImage;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.Utils;
 
 // Direct port of Bisqwit's code on the wiki. (probably just as slow, we'll
 // see.)
@@ -10,34 +10,34 @@ import jnesulator.core.nes.utils;
 // the expensive part is the Math function calls of course
 public class AltNTSCRenderer extends Renderer {
 
-	private final static double attenuation = 0.746;
-	private final static double[] levels = { -0.117f, 0.000f, 0.308f, 0.715f, 0.397f, 0.681f, 1.0f, 1.0f
+	private static final double attenuation = 0.746;
+	private static final double[] levels = { -0.117f, 0.000f, 0.308f, 0.715f, 0.397f, 0.681f, 1.0f, 1.0f
 			// 0x00 0x10 0x20 0x30
 	};
-	private final static int SAMPLESPERPIXEL = 8;
-	private final static int width = 604;
+	private static final int SAMPLESPERPIXEL = 8;
+	private static final int width = 604;
 
-	public static int clamp(final double a) {
+	public static int clamp(double a) {
 		return (int) ((a < 0) ? 0 : ((a > 255) ? 255 : a));
 	}
 
 	public static double gammafix(double luma) {
-		final float gamma = 2.0f; // Assumed display gamma
+		float gamma = 2.0f; // Assumed display gamma
 		return luma <= 0.f ? 0.f : Math.pow(luma, 2.2f / gamma);
 	}
 
-	private static boolean inColorPhase(final int color, final int phase) {
+	private static boolean inColorPhase(int color, int phase) {
 		return (color + phase) % 12 < 6;
 	}
 
-	private final int[] frame = new int[width * 240];
+	private int[] frame = new int[width * 240];
 
 	private int frame_ptr = 0;
 
 	private int frame_ctr;
 
 	private int phase;
-	private final double[] signal_levels = new double[256 * SAMPLESPERPIXEL];
+	private double[] signal_levels = new double[256 * SAMPLESPERPIXEL];
 	private int ntsc_buf_ptr = 0;
 
 	public AltNTSCRenderer() {
@@ -48,7 +48,7 @@ public class AltNTSCRenderer extends Renderer {
 		// };
 	}
 
-	private void ntsc_decode(final double phase) {
+	private void ntsc_decode(double phase) {
 		for (int x = 0; x < width; ++x) {
 			int center = x * (256 * SAMPLESPERPIXEL) / width + 0;
 			int begin = center - 6;
@@ -87,9 +87,9 @@ public class AltNTSCRenderer extends Renderer {
 		for (int i = 0; i < SAMPLESPERPIXEL; ++i, ++phase) {
 			double signal = inColorPhase(color, phase) ? high : low;
 			if (emphasis != 0) {
-				if ((((emphasis & (utils.BIT0)) != 0) && inColorPhase(0, phase))
-						|| (((emphasis & (utils.BIT1)) != 0) && inColorPhase(4, phase))
-						|| (((emphasis & (utils.BIT2)) != 0) && inColorPhase(8, phase))) {
+				if ((((emphasis & (Utils.BIT0)) != 0) && inColorPhase(0, phase))
+						|| (((emphasis & (Utils.BIT1)) != 0) && inColorPhase(4, phase))
+						|| (((emphasis & (Utils.BIT2)) != 0) && inColorPhase(8, phase))) {
 					signal *= attenuation;
 				}
 			}
@@ -117,9 +117,9 @@ public class AltNTSCRenderer extends Renderer {
 		return getBufferedImage(frame);
 	}
 
-	private void render_pixel(final double y, final double i, final double q) {
+	private void render_pixel(double y, double i, double q) {
 
-		final int rgb = 0xff000000 | 0x10000 * clamp(255.95 * gammafix(y + 0.946882f * i + 0.623557f * q))
+		int rgb = 0xff000000 | 0x10000 * clamp(255.95 * gammafix(y + 0.946882f * i + 0.623557f * q))
 				+ 0x00100 * clamp(255.95 * gammafix(y + -0.274788f * i + -0.635691f * q))
 				+ 0x00001 * clamp(255.95 * gammafix(y + -1.108545f * i + 1.709007f * q));
 		frame[frame_ptr++] = rgb;

@@ -1,15 +1,22 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class IremH3001Mapper extends Mapper {
+public class IremH3001Mapper extends BaseMapper {
 
 	private int[] chrbank = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
 	private int irqctr, irqreload = 0;
 	private boolean irqenable, interrupted = false;
 
+	public IremH3001Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xCFFF) {
 			super.cartWrite(addr, data);
 			return;
@@ -20,17 +27,17 @@ public class IremH3001Mapper extends Mapper {
 				prg_map[i] = (1024 * (i + (data * 8))) & (prgsize - 1);
 			}
 		} else if (addr == 0x9001) { // Mirroring
-			setmirroring(((data & (utils.BIT7)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+			setmirroring(((data & (Utils.BIT7)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 		} else if (addr == 0x9003) { // IRQ Enable
-			irqenable = ((data & (utils.BIT7)) != 0);
+			irqenable = ((data & (Utils.BIT7)) != 0);
 			if (interrupted) {
-				--cpu.interrupt;
+				--getNES().getCPU().interrupt;
 				interrupted = false;
 			}
 		} else if (addr == 0x9004) { // IRQ Reload
 			irqctr = irqreload;
 			if (interrupted) {
-				--cpu.interrupt;
+				--getNES().getCPU().interrupt;
 				interrupted = false;
 			}
 		} else if (addr == 0x9005) { // High 8 bits of IRQ Reload
@@ -52,11 +59,11 @@ public class IremH3001Mapper extends Mapper {
 	}
 
 	@Override
-	public void cpucycle(final int cycles) {
+	public void cpucycle(int cycles) {
 		if (irqenable) {
 			if (irqctr <= 0) {
 				if (!interrupted) {
-					++cpu.interrupt;
+					++getNES().getCPU().interrupt;
 					interrupted = true;
 				}
 				irqenable = false;
@@ -67,9 +74,8 @@ public class IremH3001Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			prg_map[32 - i] = prgsize - (1024 * i);
 		}

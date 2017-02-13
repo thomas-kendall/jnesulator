@@ -1,31 +1,37 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
-import jnesulator.core.nes.audio.ExpansionSoundChip;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
+import jnesulator.core.nes.audio.IExpansionSoundChip;
 import jnesulator.core.nes.audio.VRC7SoundChip;
 
-public class VRC7Mapper extends Mapper {
+public class VRC7Mapper extends BaseMapper {
 	// need to add extra audio still.
 
 	int prgbank0, prgbank1, prgbank2;
+
 	int[] chrbank = { 0, 0, 0, 0, 0, 0, 0, 0 };
 	boolean irqmode, irqenable, irqack, firedinterrupt = false;
 	int irqreload, irqcounter = 22;
 	int regaddr = 0;
-	ExpansionSoundChip sndchip = new VRC7SoundChip();
+	IExpansionSoundChip sndchip = new VRC7SoundChip();
 	boolean hasInitSound = false;
-
 	int prescaler = 341;
 
+	public VRC7Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
 		}
 
-		final boolean bit0 = ((addr & (utils.BIT4)) != 0) | ((addr & (utils.BIT3)) != 0);
-		final boolean bit1 = ((addr & (utils.BIT5)) != 0);
+		boolean bit0 = ((addr & (Utils.BIT4)) != 0) | ((addr & (Utils.BIT3)) != 0);
+		boolean bit1 = ((addr & (Utils.BIT5)) != 0);
 		switch (addr >> 12) {
 		case 0x8:
 			if (bit0) {
@@ -47,7 +53,7 @@ public class VRC7Mapper extends Mapper {
 					// tiny hack, because the APU is not initialized until AFTER
 					// this happens
 					// TODO: this really should not need to be here.
-					cpuram.apu.addExpnSound(sndchip);
+					getNES().getAPU().addExpnSound(sndchip);
 					hasInitSound = true;
 				}
 				sndchip.write(regaddr, data);
@@ -84,16 +90,16 @@ public class VRC7Mapper extends Mapper {
 				// mirroring select
 				switch (data & 3) {
 				case 0:
-					setmirroring(Mapper.MirrorType.V_MIRROR);
+					setmirroring(MirrorType.V_MIRROR);
 					break;
 				case 1:
-					setmirroring(Mapper.MirrorType.H_MIRROR);
+					setmirroring(MirrorType.H_MIRROR);
 					break;
 				case 2:
-					setmirroring(Mapper.MirrorType.SS_MIRROR0);
+					setmirroring(MirrorType.SS_MIRROR0);
 					break;
 				case 3:
-					setmirroring(Mapper.MirrorType.SS_MIRROR1);
+					setmirroring(MirrorType.SS_MIRROR1);
 					break;
 				}
 			}
@@ -104,20 +110,20 @@ public class VRC7Mapper extends Mapper {
 				// irq ack
 				irqenable = irqack;
 				if (firedinterrupt) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				firedinterrupt = false;
 			} else {
 				// irq control
-				irqack = ((data & (utils.BIT0)) != 0);
-				irqenable = ((data & (utils.BIT1)) != 0);
-				irqmode = ((data & (utils.BIT2)) != 0);
+				irqack = ((data & (Utils.BIT0)) != 0);
+				irqenable = ((data & (Utils.BIT1)) != 0);
+				irqmode = ((data & (Utils.BIT2)) != 0);
 				if (irqenable) {
 					irqcounter = irqreload;
 					prescaler = 341;
 				}
 				if (firedinterrupt) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				firedinterrupt = false;
 			}
@@ -141,9 +147,8 @@ public class VRC7Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		super.loadrom();
-		// needs to be in every mapper. Fill with initial cfg
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			// map last banks in to start off
 			prg_map[32 - i] = (prgsize - (1024 * i)) % prgsize;
@@ -161,7 +166,7 @@ public class VRC7Mapper extends Mapper {
 				// System.err.println("Interrupt @ Scanline " + scanline + "
 				// reload " + irqreload);
 				if (!firedinterrupt) {
-					++cpu.interrupt;
+					++getNES().getCPU().interrupt;
 				}
 				firedinterrupt = true;
 			} else {
@@ -195,7 +200,7 @@ public class VRC7Mapper extends Mapper {
 		}
 	}
 
-	private void setppubank(final int banksize, final int bankpos, final int banknum) {
+	private void setppubank(int banksize, int bankpos, int banknum) {
 		// System.err.println(banksize + ", " + bankpos + ", "+ banknum);
 		for (int i = 0; i < banksize; ++i) {
 			chr_map[i + bankpos] = (1024 * ((banknum) + i)) % chrsize;

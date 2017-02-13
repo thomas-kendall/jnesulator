@@ -1,13 +1,13 @@
 package jnesulator.core.nes.ui;
 
-import static jnesulator.core.nes.utils.BIT0;
-import static jnesulator.core.nes.utils.BIT1;
-import static jnesulator.core.nes.utils.BIT2;
-import static jnesulator.core.nes.utils.BIT3;
-import static jnesulator.core.nes.utils.BIT4;
-import static jnesulator.core.nes.utils.BIT5;
-import static jnesulator.core.nes.utils.BIT6;
-import static jnesulator.core.nes.utils.BIT7;
+import static jnesulator.core.nes.Utils.BIT0;
+import static jnesulator.core.nes.Utils.BIT1;
+import static jnesulator.core.nes.Utils.BIT2;
+import static jnesulator.core.nes.Utils.BIT3;
+import static jnesulator.core.nes.Utils.BIT4;
+import static jnesulator.core.nes.Utils.BIT5;
+import static jnesulator.core.nes.Utils.BIT6;
+import static jnesulator.core.nes.Utils.BIT7;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -26,7 +26,7 @@ import net.java.games.input.ControllerEnvironment;
 import net.java.games.input.Event;
 import net.java.games.input.EventQueue;
 
-public class ControllerImpl implements ControllerInterface, KeyListener {
+public class ControllerImpl implements IController, KeyListener {
 
 	/**
 	 * This method detects the available joysticks / gamepads on the computer
@@ -78,19 +78,19 @@ public class ControllerImpl implements ControllerInterface, KeyListener {
 		return buttons.toArray(new Component[0]);
 	}
 
-	// private final java.awt.Component parent;
+	// private java.awt.Component parent;
 	private Controller gameController;
 	private Component[] buttons;
-	private final ScheduledExecutorService thread = Executors.newSingleThreadScheduledExecutor();
+	private ScheduledExecutorService thread = Executors.newSingleThreadScheduledExecutor();
 	private int latchbyte = 0, controllerbyte = 0, prevbyte = 0, outbyte = 0, gamepadbyte = 0;
 
-	private final HashMap<Integer, Integer> m = new HashMap<>(10);
+	private HashMap<Integer, Integer> m = new HashMap<>(10);
 
-	private final int controllernum;
+	private int controllernum;
 
 	double threshold = 0.25;
 
-	public ControllerImpl(final int controllernum) {
+	public ControllerImpl(int controllernum) {
 		if ((controllernum != 0) && (controllernum != 1)) {
 			throw new IllegalArgumentException("controllerNum must be 0 or 1");
 		}
@@ -98,13 +98,13 @@ public class ControllerImpl implements ControllerInterface, KeyListener {
 		setButtons();
 	}
 
-	public ControllerImpl(final java.awt.Component parent, final int controllernum) {
+	public ControllerImpl(java.awt.Component parent, int controllernum) {
 		this(controllernum);
 		// this.parent = parent;
 		parent.addKeyListener(this);
 	}
 
-	public ControllerImpl(final Scene scene, final int controllernum) {
+	public ControllerImpl(Scene scene, int controllernum) {
 		this(controllernum);
 		scene.addEventHandler(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> pressKey(e.getCode().impl_getCode()));
 		scene.addEventHandler(javafx.scene.input.KeyEvent.KEY_RELEASED, e -> releaseKey(e.getCode().impl_getCode()));
@@ -202,22 +202,22 @@ public class ControllerImpl implements ControllerInterface, KeyListener {
 	}
 
 	@Override
-	public void keyPressed(final KeyEvent keyEvent) {
+	public void keyPressed(KeyEvent keyEvent) {
 		pressKey(keyEvent.getKeyCode());
 	}
 
 	@Override
-	public void keyReleased(final KeyEvent keyEvent) {
+	public void keyReleased(KeyEvent keyEvent) {
 		releaseKey(keyEvent.getKeyCode());
 	}
 
 	@Override
-	public void keyTyped(final KeyEvent arg0) {
+	public void keyTyped(KeyEvent arg0) {
 		// TODO Auto-generated method stub
 	}
 
 	@Override
-	public void output(final boolean state) {
+	public void output(boolean state) {
 		latchbyte = gamepadbyte | controllerbyte;
 	}
 
@@ -255,7 +255,7 @@ public class ControllerImpl implements ControllerInterface, KeyListener {
 		controllerbyte &= ~m.get(keyCode);
 	}
 
-	public final void setButtons() {
+	public void setButtons() {
 		Preferences prefs = PrefsSingleton.get();
 		// reset the buttons from prefs
 		m.clear();

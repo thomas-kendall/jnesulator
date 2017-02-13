@@ -1,11 +1,17 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class AnromMapper extends Mapper {
+public class AnromMapper extends BaseMapper {
+
+	public AnromMapper(NES nes) {
+		super(nes);
+	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -14,13 +20,13 @@ public class AnromMapper extends Mapper {
 		for (int i = 0; i < 32; ++i) {
 			prg_map[i] = (1024 * (i + (32 * (data & 15)))) & (prgsize - 1);
 		}
-		setmirroring(((data & (utils.BIT4)) != 0) ? MirrorType.SS_MIRROR1 : MirrorType.SS_MIRROR0);
+		setmirroring(((data & (Utils.BIT4)) != 0) ? MirrorType.SS_MIRROR1 : MirrorType.SS_MIRROR0);
 
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 0; i < 32; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
 		}

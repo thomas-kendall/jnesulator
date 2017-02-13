@@ -2,9 +2,9 @@ package jnesulator.core.nes.audio;
 
 public class TriangleTimer extends Timer {
 
-	private final static int periodadd = 1;
-	private final static int[] triangle = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 14, 13, 12, 11,
-			10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+	private static int periodadd = 1;
+	private static int[] triangle = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 14, 13, 12, 11, 10, 9,
+			8, 7, 6, 5, 4, 3, 2, 1, 0 };
 	private int divider = 0;
 
 	public TriangleTimer() {
@@ -13,7 +13,7 @@ public class TriangleTimer extends Timer {
 	}
 
 	@Override
-	public final void clock() {
+	public void clock() {
 		if (period == 0) {
 			return;
 		}
@@ -28,7 +28,7 @@ public class TriangleTimer extends Timer {
 	}
 
 	@Override
-	public final void clock(final int cycles) {
+	public void clock(int cycles) {
 		if (period == 0) {
 			return;
 		}
@@ -43,13 +43,13 @@ public class TriangleTimer extends Timer {
 	}
 
 	@Override
-	public final int getval() {
+	public int getval() {
 		return (period == 0) ? 7 : triangle[position];
 		// needed to avoid screech when period is zero
 	}
 
 	@Override
-	public final void reset() {
+	public void reset() {
 		// no way to reset the triangle
 	}
 
@@ -64,7 +64,7 @@ public class TriangleTimer extends Timer {
 	}
 
 	@Override
-	public final void setperiod(final int newperiod) {
+	public void setperiod(int newperiod) {
 		period = newperiod;
 		if (period == 0) {
 			position = 7;

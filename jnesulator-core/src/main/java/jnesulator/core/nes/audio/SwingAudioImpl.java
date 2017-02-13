@@ -7,9 +7,9 @@ import javax.sound.sampled.SourceDataLine;
 
 import jnesulator.core.nes.NES;
 import jnesulator.core.nes.PrefsSingleton;
-import jnesulator.core.nes.mapper.Mapper;
+import jnesulator.core.nes.mapper.TVType;
 
-public class SwingAudioImpl implements AudioOutInterface {
+public class SwingAudioImpl implements IAudioOutput {
 
 	private boolean soundEnable;
 	private SourceDataLine sdl;
@@ -17,7 +17,7 @@ public class SwingAudioImpl implements AudioOutInterface {
 	private int bufptr = 0;
 	private float outputvol;
 
-	public SwingAudioImpl(final NES nes, final int samplerate, Mapper.TVType tvtype) {
+	public SwingAudioImpl(NES nes, int samplerate, TVType tvtype) {
 		soundEnable = PrefsSingleton.get().getBoolean("soundEnable", true);
 		outputvol = (float) (PrefsSingleton.get().getInt("outputvol", 13107) / 16384.);
 		double fps;
@@ -32,7 +32,7 @@ public class SwingAudioImpl implements AudioOutInterface {
 			break;
 		}
 		if (soundEnable) {
-			final int samplesperframe = (int) Math.ceil((samplerate * 2) / fps);
+			int samplesperframe = (int) Math.ceil((samplerate * 2) / fps);
 			audiobuf = new byte[samplesperframe * 2];
 			try {
 				AudioFormat af = new AudioFormat(samplerate, 16, // bit
@@ -59,14 +59,14 @@ public class SwingAudioImpl implements AudioOutInterface {
 	}
 
 	@Override
-	public final boolean bufferHasLessThan(final int samples) {
+	public boolean bufferHasLessThan(int samples) {
 		// returns true if the audio buffer has less than the specified amt of
 		// samples remaining in it
 		return (sdl == null) ? false : ((sdl.getBufferSize() - sdl.available()) <= samples);
 	}
 
 	@Override
-	public final void destroy() {
+	public void destroy() {
 		if (soundEnable) {
 			sdl.stop();
 			sdl.close();
@@ -74,7 +74,7 @@ public class SwingAudioImpl implements AudioOutInterface {
 	}
 
 	@Override
-	public final void flushFrame(final boolean waitIfBufferFull) {
+	public void flushFrame(boolean waitIfBufferFull) {
 		if (soundEnable) {
 
 			// if (sdl.available() == sdl.getBufferSize()) {
@@ -97,7 +97,7 @@ public class SwingAudioImpl implements AudioOutInterface {
 	}
 
 	@Override
-	public final void outputSample(int sample) {
+	public void outputSample(int sample) {
 		if (soundEnable) {
 			sample *= outputvol;
 			if (sample < -32768) {

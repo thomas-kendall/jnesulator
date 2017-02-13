@@ -1,6 +1,6 @@
 package jnesulator.core.nes.ui;
 
-public interface FrameLimiterInterface {
+public interface IFrameLimiter {
 
 	void setInterval(long ns);
 

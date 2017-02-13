@@ -3,14 +3,14 @@ package jnesulator.core.nes.ui;
 import jnesulator.core.nes.NES;
 import jnesulator.core.nes.PrefsSingleton;
 
-public class FrameLimiterImpl implements FrameLimiterInterface {
+public class FrameLimiterImpl implements IFrameLimiter {
 
 	public static void forceHighResolutionTimer() {
 		// UGLY HACK ALERT: Just realized why sleep() rounds to nearest
 		// multiple of 10: it's because no other program is using high
 		// resolution timer.
 		// This should, hopefully, fix that.
-		final Thread daemon = new Thread("ForceHighResolutionTimer") {
+		Thread daemon = new Thread("ForceHighResolutionTimer") {
 			@Override
 			public void run() {
 				while (true) {
@@ -26,10 +26,9 @@ public class FrameLimiterImpl implements FrameLimiterInterface {
 		daemon.start();
 	}
 
-	NES nes;
+	private NES nes;
 	private long sleepingtest = 0;
-
-	public long FRAME_NS;
+	private long FRAME_NS;
 
 	public FrameLimiterImpl(NES nes, long framens) {
 		this.nes = nes;
@@ -48,9 +47,9 @@ public class FrameLimiterImpl implements FrameLimiterInterface {
 		if (!PrefsSingleton.get().getBoolean("Sleep", true)) {
 			return; // skip frame limiter if pref set
 		}
-		final long timeleft = System.nanoTime() - nes.frameStartTime;
+		long timeleft = System.nanoTime() - nes.frameStartTime;
 		if (timeleft < FRAME_NS) {
-			final long sleepytime = (FRAME_NS - timeleft + sleepingtest);
+			long sleepytime = (FRAME_NS - timeleft + sleepingtest);
 			if (sleepytime < 0) {
 				return;
 				// don't sleep at all.

@@ -1,15 +1,15 @@
 package jnesulator.core.nes.audio;
 
-public class Reverberator implements AudioOutInterface {
+public class Reverberator implements IAudioOutput {
 
-	AudioOutInterface iface;
+	IAudioOutput iface;
 	CircularBuffer cb;
 	double echo, lp_coef, hp_coef;
 
 	int lpaccum = 0;
 	private int dckiller = 0;
 
-	public Reverberator(AudioOutInterface i, int length, double echo_gain, double lp_coef, double hp_coef) {
+	public Reverberator(IAudioOutput i, int length, double echo_gain, double lp_coef, double hp_coef) {
 		this.echo = echo_gain;
 		this.lp_coef = lp_coef;
 		this.hp_coef = hp_coef;

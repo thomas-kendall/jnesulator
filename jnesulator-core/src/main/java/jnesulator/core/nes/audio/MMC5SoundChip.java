@@ -1,37 +1,37 @@
 package jnesulator.core.nes.audio;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.Utils;
 
-public class MMC5SoundChip implements ExpansionSoundChip {
+public class MMC5SoundChip implements IExpansionSoundChip {
 	// really quickly hacked together. Need better interfaces for this kind of
 	// thing.
 
-	final private static int[] DUTYLOOKUP = { 1, 2, 4, 6 };
-	private final static int[] LENCTRLOAD = { 10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24,
-			18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30 };
-	private final Timer[] timers = { new SquareTimer(8, 2), new SquareTimer(8, 2) };
-	private final int[] volume = new int[2];
-	private final boolean[] lenCtrEnable = { true, true, true, true };
+	private static int[] DUTYLOOKUP = { 1, 2, 4, 6 };
+	private static int[] LENCTRLOAD = { 10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18,
+			48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30 };
+	private Timer[] timers = { new SquareTimer(8, 2), new SquareTimer(8, 2) };
+	private int[] volume = new int[2];
+	private boolean[] lenCtrEnable = { true, true, true, true };
 	private boolean pcmMode, pcmIRQen;
 
 	private int cycles, pcmOut;
 
 	private int[] lengthctr = { 0, 0, 0, 0 };
 
-	private final boolean[] lenctrHalt = { true, true, true, true };
+	private boolean[] lenctrHalt = { true, true, true, true };
 
 	// instance variables for envelope units
-	private final int[] envelopeValue = { 15, 15, 15, 15 };
-	private final int[] envelopeCounter = { 0, 0, 0, 0 };
-	private final int[] envelopePos = { 0, 0, 0, 0 };
-	private final boolean[] envConstVolume = { true, true, true, true };
+	private int[] envelopeValue = { 15, 15, 15, 15 };
+	private int[] envelopeCounter = { 0, 0, 0, 0 };
+	private int[] envelopePos = { 0, 0, 0, 0 };
+	private boolean[] envConstVolume = { true, true, true, true };
 
-	private final boolean[] envelopeStartFlag = { false, false, false, false };
+	private boolean[] envelopeStartFlag = { false, false, false, false };
 	private int framectr = 0;
-	private final int ctrmode = 4;
+	private int ctrmode = 4;
 
 	@Override
-	public final void clock(final int cycle) {
+	public void clock(int cycle) {
 		cycles += cycle;
 		if ((cycles % 7445) != cycles) {
 			clockframecounter();
@@ -112,11 +112,11 @@ public class MMC5SoundChip implements ExpansionSoundChip {
 		switch (register) {
 		case 0x0:
 			// length counter 1 halt
-			lenctrHalt[0] = ((data & (utils.BIT5)) != 0);
+			lenctrHalt[0] = ((data & (Utils.BIT5)) != 0);
 			// pulse 1 duty cycle
 			timers[0].setduty(DUTYLOOKUP[data >> 6]);
 			// and envelope
-			envConstVolume[0] = ((data & (utils.BIT4)) != 0);
+			envConstVolume[0] = ((data & (Utils.BIT4)) != 0);
 			envelopeValue[0] = data & 15;
 			// setvolumes();
 			break;
@@ -141,11 +141,11 @@ public class MMC5SoundChip implements ExpansionSoundChip {
 			break;
 		case 0x4:
 			// length counter 2 halt
-			lenctrHalt[1] = ((data & (utils.BIT5)) != 0);
+			lenctrHalt[1] = ((data & (Utils.BIT5)) != 0);
 			// pulse 2 duty cycle
 			timers[1].setduty(DUTYLOOKUP[data >> 6]);
 			// and envelope
-			envConstVolume[1] = ((data & (utils.BIT4)) != 0);
+			envConstVolume[1] = ((data & (Utils.BIT4)) != 0);
 			envelopeValue[1] = data & 15;
 			// setvolumes();
 			break;
@@ -167,12 +167,12 @@ public class MMC5SoundChip implements ExpansionSoundChip {
 			envelopeStartFlag[1] = true;
 			break;
 		case 0x10:
-			pcmMode = ((data & (utils.BIT0)) != 0);
+			pcmMode = ((data & (Utils.BIT0)) != 0);
 			// true = read mode, false = write mode
 			// read mode watches ALL reads in first 8k of PRG ROM
 			// and writes to dpcm reg
 			// (no way to implement w/o refactors)
-			pcmIRQen = ((data & (utils.BIT7)) != 0);
+			pcmIRQen = ((data & (Utils.BIT7)) != 0);
 			if (pcmIRQen || pcmMode) {
 				System.err.println("Implement the MMC5 PCM IRQ, something's using it!");
 			}

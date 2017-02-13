@@ -1,21 +1,28 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Mapper33 extends Mapper {
+public class Mapper33 extends BaseMapper {
 
 	int prgbank0, prgbank1 = 0;
+
 	int[] chrbank = { 0, 0, 0, 0, 0, 0 };
 
+	public Mapper33(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xBFFF) {
 			super.cartWrite(addr, data);
 		} else if (addr <= 0x9FFF) {
 			switch (addr & 3) {
 			case 0:
 				prgbank0 = data;
-				setmirroring(((data & (utils.BIT6)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+				setmirroring(((data & (Utils.BIT6)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 				setbanks();
 				break;
 			case 1:
@@ -54,9 +61,8 @@ public class Mapper33 extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// swappable bank
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);

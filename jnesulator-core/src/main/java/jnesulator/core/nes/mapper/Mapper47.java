@@ -1,12 +1,18 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
 public class Mapper47 extends MMC3Mapper {
 
 	// official Nintendo multicart mapper, mmc3 variant
 	// used for super spike vball, nintendo world cup
 	private int multibank = 1;
+
+	public Mapper47(NES nes) {
+		super(nes);
+	}
 
 	@Override
 	public void cartWrite(int addr, int data) {
@@ -28,7 +34,7 @@ public class Mapper47 extends MMC3Mapper {
 			}
 		}
 		// different register for even/odd writes
-		if (((addr & (utils.BIT0)) != 0)) {
+		if (((addr & (Utils.BIT0)) != 0)) {
 			// odd registers
 			if ((addr >= 0x8000) && (addr <= 0x9fff)) {
 				// bank change
@@ -62,12 +68,12 @@ public class Mapper47 extends MMC3Mapper {
 			if ((addr >= 0x8000) && (addr <= 0x9fff)) {
 				// bank select
 				whichbank = data & 7;
-				prgconfig = ((data & (utils.BIT6)) != 0);
+				prgconfig = ((data & (Utils.BIT6)) != 0);
 				// if bit is false, 8000-9fff swappable and c000-dfff fixed to
 				// 2nd to last bank
 				// if bit is true, c000-dfff swappable and 8000-9fff fixed to
 				// 2nd to last bank
-				chrconfig = ((data & (utils.BIT7)) != 0);
+				chrconfig = ((data & (Utils.BIT7)) != 0);
 				// if false: 2 2k banks @ 0000-0fff, 4 1k banks in 1000-1fff
 				// if true: 4 1k banks @ 0000-0fff, 2 2k banks @ 1000-1fff
 				setupchr();
@@ -75,7 +81,7 @@ public class Mapper47 extends MMC3Mapper {
 			} else if ((addr >= 0xA000) && (addr <= 0xbfff)) {
 				// mirroring setup
 				if (scrolltype != MirrorType.FOUR_SCREEN_MIRROR) {
-					setmirroring(((data & (utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+					setmirroring(((data & (Utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 				}
 			} else if ((addr >= 0xc000) && (addr <= 0xdfff)) {
 				// value written here used to reload irq counter _@ end of
@@ -84,7 +90,7 @@ public class Mapper47 extends MMC3Mapper {
 			} else if ((addr >= 0xe000) && (addr <= 0xffff)) {
 				// any value here disables IRQ and acknowledges
 				if (interrupted) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				interrupted = false;
 				irqenable = false;
@@ -93,9 +99,8 @@ public class Mapper47 extends MMC3Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			prg_map[32 - i] = prgsize - (1024 * i);
 		}

@@ -1,18 +1,25 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class MMC2Mapper extends Mapper {
+public class MMC2Mapper extends BaseMapper {
 
 	boolean chrlatchL = true;
+
 	boolean chrlatchR = false;
 	int chrbankL1 = 0;
 	int chrbankR1 = 0;
 	int chrbankL2 = 0;
 	int chrbankR2 = 0;
 
+	public MMC2Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -34,14 +41,13 @@ public class MMC2Mapper extends Mapper {
 			chrbankR2 = data & 0x1f;
 			setupPPUBanks();
 		} else if (addr >= 0xf000 && addr <= 0xffff) {
-			setmirroring((((data & (utils.BIT0)) != 0)) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+			setmirroring((((data & (Utils.BIT0)) != 0)) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 		}
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// on startup:
 		for (int i = 1; i <= 32; ++i) {
 			prg_map[32 - i] = prgsize - (1024 * i);
@@ -53,9 +59,9 @@ public class MMC2Mapper extends Mapper {
 	}
 
 	@Override
-	public int ppuRead(final int addr) {
+	public int ppuRead(int addr) {
 		int retval = super.ppuRead(addr);
-		if (((addr & (utils.BIT3)) != 0)) {
+		if (((addr & (Utils.BIT3)) != 0)) {
 			// latch fires after 2nd read from pattern table
 			// A3 will be on for 2nd read b/c it's tile low bytes
 			switch (addr >> 4) {
@@ -95,7 +101,7 @@ public class MMC2Mapper extends Mapper {
 		// utils.printarray(chr_map);
 	}
 
-	// public void notifyscanline(final int scanline) {
+	// public void notifyscanline(int scanline) {
 	// System.err.println(" ScanLine " + scanline + " " + chrlatchL);
 	// }
 	private void setupPPUBanks() {

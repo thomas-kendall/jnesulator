@@ -1,13 +1,15 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class NINA_003_006_Mapper extends Mapper {
+public class NINA_003_006_Mapper extends BaseMapper {
 
 	boolean m113 = true;
 
-	public NINA_003_006_Mapper(int mappernum) {
-		super();
+	public NINA_003_006_Mapper(NES nes, int mappernum) {
+		super(nes);
 		switch (mappernum) {
 		// mappers 79 and 113 differ mainly on whether they can control
 		// mirroring or not
@@ -21,14 +23,14 @@ public class NINA_003_006_Mapper extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr < 0x4100 || addr > 0x5fff) {
 			super.cartWrite(addr, data);
 			return;
 		}
 
 		if (m113) {
-			setmirroring(((data & (utils.BIT7)) != 0) ? MirrorType.V_MIRROR : MirrorType.H_MIRROR);
+			setmirroring(((data & (Utils.BIT7)) != 0) ? MirrorType.V_MIRROR : MirrorType.H_MIRROR);
 
 			// remap CHR bank
 			for (int i = 0; i < 8; ++i) {
@@ -51,9 +53,8 @@ public class NINA_003_006_Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 0; i < 32; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
 		}
@@ -63,7 +64,7 @@ public class NINA_003_006_Mapper extends Mapper {
 	}
 
 	@Override
-	public final void reset() {
+	public void reset() {
 		for (int i = 0x4100; i < 0x6000; i += 0x200) {
 			cartWrite(i, i + 0xFF);
 		}

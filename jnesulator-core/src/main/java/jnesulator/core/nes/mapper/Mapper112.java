@@ -1,15 +1,22 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Mapper112 extends Mapper {
+public class Mapper112 extends BaseMapper {
 	// Chinese variant of MIMIC mapper
 
 	private int whichbank = 0;
+
 	private int[] chrreg = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
+	public Mapper112(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -35,14 +42,13 @@ public class Mapper112 extends Mapper {
 			// bank select
 			whichbank = data & 7;
 		} else if (addr == 0xE000) {
-			setmirroring(((data & (utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+			setmirroring(((data & (Utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 		}
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			prg_map[32 - i] = prgsize - (1024 * i);
 		}

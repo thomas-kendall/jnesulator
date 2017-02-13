@@ -2,36 +2,42 @@ package jnesulator.core.nes.mapper;
 
 import java.util.Arrays;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 import jnesulator.core.nes.audio.MMC5SoundChip;
 
-public class MMC5Mapper extends Mapper {
+public class MMC5Mapper extends BaseMapper {
 
 	// the infamous kitchen sink mapper
-	final int[] exram = new int[1024];
+	int[] exram = new int[1024];
+
 	private int exramMode, chrMode, prgMode;
 	private int wramWrite1, wramWrite2, multiplier1, multiplier2;
 	private int prgpage, chrOr, wrambank;
 	boolean scanctrEnable, irqPend;
-	private final int[] chrregsA = new int[8];
-	private final int[] chrregsB = new int[4];
-	private final int[] prgregs = new int[4];
-	private final int[] chrmapB = new int[4];
-	private final boolean[] romHere = new boolean[3];
+	private int[] chrregsA = new int[8];
+	private int[] chrregsB = new int[4];
+	private int[] prgregs = new int[4];
+	private int[] chrmapB = new int[4];
+	private boolean[] romHere = new boolean[3];
 	private int scanctrLine, irqCounter = 20;
-	private final int[] fillnt = new int[1024];
+	private int[] fillnt = new int[1024];
 	private MMC5SoundChip soundchip;
 	private boolean inFrame = false;
-
 	private int fetchcount, exlatch, lastfetch, prevfetch, prevprevfetch;
 
 	private boolean spritemode = false;
 
+	public MMC5Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		// hook for turning off PPU in frame flag since idk how the real thing
 		// works
-		if (!ppu.renderingOn() || ppu.scanline > 241) {
+		if (!getNES().getPPU().renderingOn() || getNES().getPPU().scanline > 241) {
 			inFrame = false;
 		}
 
@@ -44,7 +50,7 @@ public class MMC5Mapper extends Mapper {
 				return prg[prg_map[((addr & 0x7fff)) >> 10] + (addr & 1023)];
 			} else {
 				// don't know quite how to deal with this yet
-				System.err.println("MMC5 wants RAM at " + utils.hex(addr));
+				System.err.println("MMC5 wants RAM at " + Utils.hex(addr));
 				return 0xffff;
 			}
 
@@ -69,7 +75,7 @@ public class MMC5Mapper extends Mapper {
 				int stat = (irqPend ? 0x80 : 0) + (inFrame ? 0x40 : 0);
 				if (irqPend) {
 					irqPend = false;
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				return stat;
 			case 0x5205:
@@ -85,7 +91,7 @@ public class MMC5Mapper extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr < 0x5c00) {
 			// System.err.println("MMC5 Write register "+ utils.hex(addr) + " d
 			// " + utils.hex(data));
@@ -103,7 +109,7 @@ public class MMC5Mapper extends Mapper {
 			case 0x5015:
 				if (soundchip == null) {
 					soundchip = new MMC5SoundChip();
-					cpuram.apu.addExpnSound(soundchip);
+					getNES().getAPU().addExpnSound(soundchip);
 				}
 				// sound chip
 				soundchip.write(addr - 0x5000, data);
@@ -150,19 +156,19 @@ public class MMC5Mapper extends Mapper {
 			case 0x5114:
 				// prg reg 1
 				prgregs[0] = data & 0x7f;
-				romHere[0] = ((data & (utils.BIT7)) != 0);
+				romHere[0] = ((data & (Utils.BIT7)) != 0);
 				setupPRG();
 				break;
 			case 0x5115:
 				// prg reg 2
 				prgregs[1] = data & 0x7f;
-				romHere[1] = ((data & (utils.BIT7)) != 0);
+				romHere[1] = ((data & (Utils.BIT7)) != 0);
 				setupPRG();
 				break;
 			case 0x5116:
 				// prg reg 3
 				prgregs[2] = data & 0x7f;
-				romHere[2] = ((data & (utils.BIT7)) != 0);
+				romHere[2] = ((data & (Utils.BIT7)) != 0);
 				setupPRG();
 				break;
 			case 0x5117:
@@ -227,7 +233,7 @@ public class MMC5Mapper extends Mapper {
 				break;
 			case 0x5200:
 				// splitscreen control
-				if (((data & (utils.BIT7)) != 0)) {
+				if (((data & (Utils.BIT7)) != 0)) {
 					System.err.println("Split screen mode not supported yet");
 				}
 				break;
@@ -243,7 +249,7 @@ public class MMC5Mapper extends Mapper {
 				break;
 			case 0x5204:
 				// irq control
-				scanctrEnable = ((data & (utils.BIT7)) != 0);
+				scanctrEnable = ((data & (Utils.BIT7)) != 0);
 				break;
 			case 0x5205:
 				multiplier1 = data;
@@ -258,7 +264,7 @@ public class MMC5Mapper extends Mapper {
 			// exram
 			exram[addr - 0x5c00] = data;
 		} else if (addr < 0x8000) {
-			final int wramaddr = wrambank * 8192 + (addr - 0x6000);
+			int wramaddr = wrambank * 8192 + (addr - 0x6000);
 			// System.err.println("wrote wram " + utils.hex(wramaddr));
 			prgram[wramaddr] = data;
 		} else if (addr < 0xA000 && !romHere[0] && prgMode == 3) {
@@ -273,11 +279,11 @@ public class MMC5Mapper extends Mapper {
 			// System.err.println(utils.hex(ramaddr));
 			prgram[ramaddr] = data;
 		} else if (addr < 0xE000 && !romHere[2]) {
-			System.err.println("RAM write to 0xC000 area " + utils.hex(addr));
+			System.err.println("RAM write to 0xC000 area " + Utils.hex(addr));
 			prgram[((prgregs[2] & 7) * 8192) + (addr - 0xc000)] = data;
 		} else {
 			System.err.println(
-					"unsupported mmc5 write " + utils.hex(addr) + romHere[0] + romHere[1] + romHere[2] + prgMode);
+					"unsupported mmc5 write " + Utils.hex(addr) + romHere[0] + romHere[1] + romHere[2] + prgMode);
 		}
 	}
 
@@ -287,7 +293,7 @@ public class MMC5Mapper extends Mapper {
 			irqCounter = 0;
 			if (irqPend) {
 				irqPend = false;
-				--cpu.interrupt;
+				--getNES().getCPU().interrupt;
 			}
 		} else {
 			if (irqCounter++ == scanctrLine) {
@@ -295,15 +301,14 @@ public class MMC5Mapper extends Mapper {
 
 			}
 			if (irqPend && scanctrEnable) {
-				++cpu.interrupt;
+				++getNES().getCPU().interrupt;
 			}
 		}
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// on startup:
 		prgregs[3] = (prgsize / 8192) - 1;
 		prgregs[2] = (prgsize / 8192) - 1;
@@ -319,7 +324,7 @@ public class MMC5Mapper extends Mapper {
 	}
 
 	@Override
-	public int ppuRead(final int addr) {
+	public int ppuRead(int addr) {
 		// so how DO we detect which reads are which without
 		// seeing the nametable reads?
 

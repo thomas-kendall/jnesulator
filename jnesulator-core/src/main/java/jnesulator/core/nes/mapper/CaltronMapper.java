@@ -1,13 +1,19 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class CaltronMapper extends Mapper {
+public class CaltronMapper extends BaseMapper {
 
 	int reg = 0;
 
+	public CaltronMapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr >= 0x6000 && addr <= 0x67FF) {
 			reg = addr & 0xFF;
 
@@ -16,7 +22,7 @@ public class CaltronMapper extends Mapper {
 				prg_map[i] = (1024 * (i + 32 * (addr & 7))) & (prgsize - 1);
 			}
 
-			setmirroring(((addr & (utils.BIT5)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+			setmirroring(((addr & (Utils.BIT5)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 		} else if (addr >= 0x8000 && addr <= 0xFFFF && (reg & 4) != 0) {
 			// remap CHR bank
 			for (int i = 0; i < 8; ++i) {
@@ -26,9 +32,9 @@ public class CaltronMapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
+	public void loadrom(ROMLoader loader) throws BadMapperException {
 		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+		super.loadrom(loader);
 		for (int i = 0; i < 32; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
 		}

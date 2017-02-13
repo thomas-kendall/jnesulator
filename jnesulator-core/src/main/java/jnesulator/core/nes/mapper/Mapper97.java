@@ -1,9 +1,16 @@
 package jnesulator.core.nes.mapper;
 
-public class Mapper97 extends Mapper {
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+
+public class Mapper97 extends BaseMapper {
+
+	public Mapper97(NES nes) {
+		super(nes);
+	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -33,9 +40,8 @@ public class Mapper97 extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// fixed bank
 		for (int i = 1; i <= 16; ++i) {
 			prg_map[16 - i] = prgsize - (1024 * i);

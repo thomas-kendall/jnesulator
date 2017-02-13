@@ -3,32 +3,37 @@ package jnesulator.core.nes;
 import javafx.application.Platform;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.mapper.BadMapperException;
-import jnesulator.core.nes.mapper.Mapper;
-import jnesulator.core.nes.ui.ControllerInterface;
+import jnesulator.core.nes.mapper.IMapper;
+import jnesulator.core.nes.mapper.MapperLoader;
 import jnesulator.core.nes.ui.FrameLimiterImpl;
-import jnesulator.core.nes.ui.FrameLimiterInterface;
-import jnesulator.core.nes.ui.GUIInterface;
+import jnesulator.core.nes.ui.IController;
+import jnesulator.core.nes.ui.IFrameLimiter;
+import jnesulator.core.nes.ui.IGUI;
 
 public class NES {
-	final public static String VERSION = "062-dev";
-	private Mapper mapper;
+	private IMapper mapper;
 	private APU apu;
 	private CPU cpu;
 	private CPURAM cpuram;
 	private PPU ppu;
-	private GUIInterface gui;
-	private ControllerInterface controller1, controller2;
+	private IGUI gui;
+	private IController controller1, controller2;
 	public boolean runEmulation = false;
 	private boolean dontSleep = false;
 	private boolean shutdown = false;
 	public long frameStartTime, framecount, frameDoneTime;
 	private boolean frameLimiterOn = true;
 	private String curRomPath, curRomName;
-	private final FrameLimiterInterface limiter = new FrameLimiterImpl(this, 16639267);
+	private IFrameLimiter limiter = new FrameLimiterImpl(this, 16639267);
 	// Pro Action Replay device
 	private ActionReplay actionReplay;
 
-	public NES(GUIInterface gui) {
+	public NES(IGUI gui) {
+		cpu = new CPU(this);
+		cpuram = new CPURAM(this);
+		apu = new APU(this);
+		ppu = new PPU(this);
+
 		if (gui != null) {
 			this.gui = gui;
 			gui.setNES(this);
@@ -50,11 +55,15 @@ public class NES {
 		return actionReplay;
 	}
 
-	public ControllerInterface getcontroller1() {
+	public APU getAPU() {
+		return apu;
+	}
+
+	public IController getcontroller1() {
 		return controller1;
 	}
 
-	public ControllerInterface getcontroller2() {
+	public IController getcontroller2() {
 		return controller2;
 	}
 
@@ -74,6 +83,14 @@ public class NES {
 		return frameDoneTime;
 	}
 
+	public IMapper getMapper() {
+		return mapper;
+	}
+
+	public PPU getPPU() {
+		return ppu;
+	}
+
 	public String getrominfo() {
 		if (mapper != null) {
 			return mapper.getrominfo();
@@ -85,21 +102,20 @@ public class NES {
 		return frameLimiterOn;
 	}
 
-	public synchronized void loadROM(final String filename) {
+	public synchronized void loadROM(String filename) {
 		loadROM(filename, null);
 	}
 
-	public synchronized void loadROM(final String filename, Integer initialPC) {
+	public synchronized void loadROM(String filename, Integer initialPC) {
 		runEmulation = false;
 		if (FileUtils.exists(filename) && (FileUtils.getExtension(filename).equalsIgnoreCase(".nes")
 				|| FileUtils.getExtension(filename).equalsIgnoreCase(".nsf"))) {
-			Mapper newmapper;
+			IMapper newmapper;
 			try {
-				final ROMLoader loader = new ROMLoader(filename);
+				ROMLoader loader = new ROMLoader(filename);
 				loader.parseHeader();
-				newmapper = Mapper.getCorrectMapper(loader);
-				newmapper.setLoader(loader);
-				newmapper.loadrom();
+				newmapper = MapperLoader.getCorrectMapper(this, loader);
+				newmapper.loadrom(loader);
 			} catch (BadMapperException e) {
 				gui.messageBox(
 						"Error Loading File: ROM is" + " corrupted or uses an unsupported mapper.\n" + e.getMessage());
@@ -110,25 +126,18 @@ public class NES {
 				e.printStackTrace();
 				return;
 			}
-			if (apu != null) {
+			if (mapper != null) {
 				// if rom already running save its sram before closing
 				apu.destroy();
 				saveSRAM(false);
-				// also get rid of mapper etc.
-				mapper.destroy();
-				cpu = null;
-				cpuram = null;
-				ppu = null;
 			}
 			mapper = newmapper;
 			// now some annoying getting of all the references where they belong
-			cpuram = mapper.getCPURAM();
+			cpuram.reset();
+			cpu.reset();
+			apu.reset();
+			ppu.reset();
 			actionReplay = new ActionReplay(cpuram);
-			cpu = mapper.cpu;
-			ppu = mapper.ppu;
-			apu = new APU(this, cpu, cpuram);
-			cpuram.setAPU(apu);
-			cpuram.setPPU(ppu);
 			curRomPath = filename;
 			curRomName = FileUtils.getFilenamefromPath(filename);
 
@@ -149,14 +158,14 @@ public class NES {
 	}
 
 	private void loadSRAM() {
-		final String name = FileUtils.stripExtension(curRomPath) + ".sav";
+		String name = FileUtils.stripExtension(curRomPath) + ".sav";
 		if (FileUtils.exists(name) && mapper.supportsSaves()) {
 			mapper.setPRGRAM(FileUtils.readfromfile(name));
 		}
 
 	}
 
-	public void messageBox(final String string) {
+	public void messageBox(String string) {
 		if (gui != null) {
 			gui.messageBox(string);
 		}
@@ -229,11 +238,10 @@ public class NES {
 		}
 	}
 
-	public void run(final String romtoload) {
+	public void run(String romtoload) {
 		Thread.currentThread().setPriority(Thread.NORM_PRIORITY + 1);
 		// set thread priority higher than the interface thread
 		curRomPath = romtoload;
-		gui.loadROMs(romtoload);
 		run();
 	}
 
@@ -264,7 +272,7 @@ public class NES {
 		// System.err.println(framecount);
 	}
 
-	private void saveSRAM(final boolean async) {
+	private void saveSRAM(boolean async) {
 		if (mapper != null && mapper.hasSRAM() && mapper.supportsSaves()) {
 			if (async) {
 				FileUtils.asyncwritetofile(mapper.getPRGRam(), FileUtils.stripExtension(curRomPath) + ".sav");
@@ -274,7 +282,7 @@ public class NES {
 		}
 	}
 
-	public void setControllers(ControllerInterface controller1, ControllerInterface controller2) {
+	public void setControllers(IController controller1, IController controller2) {
 		this.controller1 = controller1;
 		this.controller2 = controller2;
 	}

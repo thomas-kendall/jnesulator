@@ -38,7 +38,7 @@ public class OnScreenMenu extends StackPane {
 			};
 		}
 
-		GameAction(final String zipName, final String romName) {
+		GameAction(String zipName, String romName) {
 			if (romName.toLowerCase().endsWith(".nes")) {
 				name = romName.substring(0, romName.length() - 4);
 			} else {
@@ -46,7 +46,7 @@ public class OnScreenMenu extends StackPane {
 			}
 			action = () -> {
 				try {
-					final File extractedFile = extractRomFromZip(zipName, romName);
+					File extractedFile = extractRomFromZip(zipName, romName);
 					if (extractedFile != null) {
 						extractedFile.deleteOnExit();
 					}
@@ -81,19 +81,19 @@ public class OnScreenMenu extends StackPane {
 		}
 	}
 
-	private GUIInterface gui;
+	private IGUI gui;
 	private ListView<MenuAction> menu;
 	private ListView<MenuAction> gameMenu;
 
-	private final ObservableList<MenuAction> menuItems = FXCollections.<MenuAction> observableArrayList(
+	private ObservableList<MenuAction> menuItems = FXCollections.<MenuAction> observableArrayList(
 			new MenuAction("Resume", this::resume), new MenuAction("Load Game", this::loadGame),
 			new MenuAction("Reset", this::reset), new MenuAction("Exit", this::exit),
 			new MenuAction("Power Off", this::powerOff));
 
-	private final ObservableList<MenuAction> games = FXCollections
+	private ObservableList<MenuAction> games = FXCollections
 			.<MenuAction> observableArrayList(new MenuAction("Back", () -> gameMenu.setVisible(false)));
 
-	public OnScreenMenu(GUIInterface gui) {
+	public OnScreenMenu(IGUI gui) {
 		this.gui = gui;
 		menu = new ListView<>(menuItems);
 		gameMenu = new ListView(games);
@@ -123,8 +123,8 @@ public class OnScreenMenu extends StackPane {
 	}
 
 	private File extractRomFromZip(String zipName, String romName) throws IOException {
-		final File outputFile;
-		final FileOutputStream fos;
+		File outputFile;
+		FileOutputStream fos;
 		try (ZipInputStream zipStream = new ZipInputStream(new FileInputStream(zipName))) {
 			ZipEntry entry;
 			do {
@@ -146,7 +146,7 @@ public class OnScreenMenu extends StackPane {
 				zipStream.close();
 				return null;
 			}
-			final byte[] buf = new byte[4096];
+			byte[] buf = new byte[4096];
 			fos = new FileOutputStream(outputFile);
 			int numBytes;
 			while ((numBytes = zipStream.read(buf, 0, buf.length)) != -1) {
@@ -162,12 +162,12 @@ public class OnScreenMenu extends StackPane {
 	}
 
 	private List<String> listRomsInZip(String zipName) throws IOException {
-		final List<String> romNames;
+		List<String> romNames;
 		try (ZipFile zipFile = new ZipFile(zipName)) {
-			final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
+			Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
 			romNames = new ArrayList<>();
 			while (zipEntries.hasMoreElements()) {
-				final ZipEntry entry = zipEntries.nextElement();
+				ZipEntry entry = zipEntries.nextElement();
 				if (!entry.isDirectory() && (entry.getName().endsWith(".nes") || entry.getName().endsWith(".fds")
 						|| entry.getName().endsWith(".nsf"))) {
 					romNames.add(entry.getName());

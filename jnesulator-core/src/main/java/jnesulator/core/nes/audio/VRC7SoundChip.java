@@ -1,15 +1,15 @@
 package jnesulator.core.nes.audio;
 
-import static jnesulator.core.nes.utils.BIT13;
-import static jnesulator.core.nes.utils.BIT3;
-import static jnesulator.core.nes.utils.BIT4;
-import static jnesulator.core.nes.utils.BIT5;
-import static jnesulator.core.nes.utils.BIT6;
-import static jnesulator.core.nes.utils.BIT7;
+import static jnesulator.core.nes.Utils.BIT13;
+import static jnesulator.core.nes.Utils.BIT3;
+import static jnesulator.core.nes.Utils.BIT4;
+import static jnesulator.core.nes.Utils.BIT5;
+import static jnesulator.core.nes.Utils.BIT6;
+import static jnesulator.core.nes.Utils.BIT7;
 
 import java.util.Arrays;
 
-public class VRC7SoundChip implements ExpansionSoundChip {
+public class VRC7SoundChip implements IExpansionSoundChip {
 
 	// Emulates the YM2413 sound chip, pretty much only found in Lagrange Point
 	// sound test in lagrange point: hold A and B on controller 2 and reset.
@@ -20,20 +20,20 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 		CUTOFF, ATTACK, DECAY, RELEASE;
 	}
 
-	private final static int[] LOGSIN = genlogsintbl(), EXP = genexptbl(), AM = genamtbl();
-	private final static double[] MULTIPLIER = { 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 12, 12, 15, 15 },
+	private static int[] LOGSIN = genlogsintbl(), EXP = genexptbl(), AM = genamtbl();
+	private static double[] MULTIPLIER = { 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 12, 12, 15, 15 },
 			VIBRATO = genvibtbl();
-	private final static int[] KEYSCALE = { 0, 1536, 2048, 2368, 2560, 2752, 2880, 3008, 3072, 3200, 3264, 3328, 3392,
-			3456, 3520, 3584 };
-	final private static int ZEROVOL = 8388608; // 2^23
-	final private static int MAXVOL = 0;
-	private final static int[] ATTACKVAL = { 0, 0, 0, 0, 98, 120, 146, 171, 195, 216, 293, 341, 390, 471, 602, 683, 780,
-			964, 1168, 1366, 1560, 1927, 2315, 2731, 3075, 3855, 4682, 5461, 6242, 8035, 9364, 10921, 12480, 15423,
-			18727, 21856, 24960, 30847, 37413, 43713, 51130, 61580, 74991, 87425, 99841, 123161, 149319, 173949, 200870,
+	private static int[] KEYSCALE = { 0, 1536, 2048, 2368, 2560, 2752, 2880, 3008, 3072, 3200, 3264, 3328, 3392, 3456,
+			3520, 3584 };
+	private static int ZEROVOL = 8388608; // 2^23
+	private static int MAXVOL = 0;
+	private static int[] ATTACKVAL = { 0, 0, 0, 0, 98, 120, 146, 171, 195, 216, 293, 341, 390, 471, 602, 683, 780, 964,
+			1168, 1366, 1560, 1927, 2315, 2731, 3075, 3855, 4682, 5461, 6242, 8035, 9364, 10921, 12480, 15423, 18727,
+			21856, 24960, 30847, 37413, 43713, 51130, 61580, 74991, 87425, 99841, 123161, 149319, 173949, 200870,
 			241044, 281218, 312464, 337461, 401739, 496266, 562435, 602609, 766957, 937392, 1205218, 8388607, 8388607,
 			8388607, 8388607, 8388607, 8388607, 8388607, 8388607, 8388607, 8388607, 8388607, 8388607, 8388607, 8388607,
 			8388607, 8388607 };
-	private final static int[] DECAYVAL = { 0, 0, 0, 0, 8, 10, 12, 14, // +2
+	private static int[] DECAYVAL = { 0, 0, 0, 0, 8, 10, 12, 14, // +2
 			16, 20, 24, 28, // +4
 			32, 40, 48, 56, // +8
 			65, 77, 96, 112, // +16
@@ -50,7 +50,7 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 			132859, 132859, 132859, 132859, 132859, 132859, 132859, 132859, 132859, 132859, 132859, 132859, 132859,
 			132859, 132859, 132859, };
 
-	public static int clamp(final int a) {
+	public static int clamp(int a) {
 		return (a != (a & 0xff)) ? ((a < 0) ? 0 : 255) : a;
 	}
 
@@ -112,19 +112,19 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 		}
 	}
 
-	private final EnvState[] modenv_state = new EnvState[6], carenv_state = new EnvState[6];
+	private EnvState[] modenv_state = new EnvState[6], carenv_state = new EnvState[6];
 
-	private final int[] vol = new int[6], freq = new int[6], octave = new int[6], instrument = new int[6],
-			mod = new int[6], oldmodout = new int[6], out = new int[6];
+	private int[] vol = new int[6], freq = new int[6], octave = new int[6], instrument = new int[6], mod = new int[6],
+			oldmodout = new int[6], out = new int[6];
 
-	private final boolean[] key = new boolean[6], chSust = new boolean[6];
+	private boolean[] key = new boolean[6], chSust = new boolean[6];
 
 	private int fmctr = 0, amctr = 0; // free running counter for indices
 
-	private final double[] phase = new double[6];
-	private final int[] usertone = new int[8], modenv_vol = new int[6], carenv_vol = new int[6];
+	private double[] phase = new double[6];
+	private int[] usertone = new int[8], modenv_vol = new int[6], carenv_vol = new int[6];
 
-	private final int[][] instdata = { // instrument parameters
+	private int[][] instdata = { // instrument parameters
 			usertone, // modifiable user tone register is instrument 0
 			// i'm surprised no one's bothered to decap it and take a look
 			// here's the latest one from rainwarrior aug.2012
@@ -152,7 +152,7 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 	}
 
 	@Override
-	public final void clock(final int cycle) {
+	public void clock(int cycle) {
 		/*
 		 * real chip runs at ~3.6 mhz from a separate oscillator but this
 		 * emulation operates at NTSC NES clock freq of 1.789 this would be a
@@ -193,11 +193,11 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 	}
 
 	@Override
-	public final int getval() {
+	public int getval() {
 		return lpaccum2;
 	}
 
-	private int logsin(final int x, final boolean rectify) {
+	private int logsin(int x, boolean rectify) {
 		// s stores sign of the output, in actual hw the sign bit bypasses
 		// everything else and goes directly to the dac.
 		switch ((x >> 8) & 3) {
@@ -242,33 +242,33 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 		// http://gendev.spritesmind.net/forum/viewtopic.php?t=386
 		// http://www.smspower.org/maxim/Documents/YM2413ApplicationManual
 		// http://forums.nesdev.com/viewtopic.php?f=3&t=9102
-		final double modVibrato = ((inst[0] & (BIT6)) != 0) ? VIBRATO[fmctr] * (1 << octave[ch]) : 0;
-		final double modFreqMultiplier = MULTIPLIER[inst[0] & 0xf];
-		final int modFeedback = (fb == 7) ? 0 : (mod[ch] + oldmodout[ch]) >> (2 + fb);
+		double modVibrato = ((inst[0] & (BIT6)) != 0) ? VIBRATO[fmctr] * (1 << octave[ch]) : 0;
+		double modFreqMultiplier = MULTIPLIER[inst[0] & 0xf];
+		int modFeedback = (fb == 7) ? 0 : (mod[ch] + oldmodout[ch]) >> (2 + fb);
 		// no i don't know why it adds the last 2 old outputs but MAME
 		// does it that way and the feedback doesn't sound right w/o it
-		final int mod_f = modFeedback + (int) (modVibrato + modFreqMultiplier * phase[ch]);
+		int mod_f = modFeedback + (int) (modVibrato + modFreqMultiplier * phase[ch]);
 		// each of these values is an attenuation value
-		final int modVol = (inst[2] & 0x3f) * 32;// modulator vol
-		final int modAM = ((inst[0] & (BIT7)) != 0) ? AM[amctr] : 0;
-		final boolean modRectify = ((inst[3] & (BIT3)) != 0);
+		int modVol = (inst[2] & 0x3f) * 32;// modulator vol
+		int modAM = ((inst[0] & (BIT7)) != 0) ? AM[amctr] : 0;
+		boolean modRectify = ((inst[3] & (BIT3)) != 0);
 		// calculate modulator operator value
 		mod[ch] = operator(mod_f, modVol + modEnvelope + modks + modAM, modRectify) << 2;
 		oldmodout[ch] = mod[ch];
 		// now repeat most of that for the carrier
-		final double carVibrato = ((inst[1] & (BIT6)) != 0) ? VIBRATO[fmctr] * (freq[ch] << octave[ch]) / 512. : 0;
-		final double carFreqMultiplier = MULTIPLIER[inst[1] & 0xf];
-		final int carFeedback = (mod[ch] + oldmodout[ch]) >> 1; // inaccurately
-																// named
-		final int car_f = carFeedback + (int) (carVibrato + carFreqMultiplier * phase[ch]);
-		final int carVol = vol[ch] * 128; // 4 bits for carrier vol not 6
-		final int carAM = ((inst[1] & (BIT7)) != 0) ? AM[amctr] : 0;
-		final boolean carRectify = ((inst[3] & (BIT4)) != 0);
+		double carVibrato = ((inst[1] & (BIT6)) != 0) ? VIBRATO[fmctr] * (freq[ch] << octave[ch]) / 512. : 0;
+		double carFreqMultiplier = MULTIPLIER[inst[1] & 0xf];
+		int carFeedback = (mod[ch] + oldmodout[ch]) >> 1; // inaccurately
+															// named
+		int car_f = carFeedback + (int) (carVibrato + carFreqMultiplier * phase[ch]);
+		int carVol = vol[ch] * 128; // 4 bits for carrier vol not 6
+		int carAM = ((inst[1] & (BIT7)) != 0) ? AM[amctr] : 0;
+		boolean carRectify = ((inst[3] & (BIT4)) != 0);
 		out[ch] = operator(car_f, carVol + carEnvelope + carks + carAM, carRectify) << 2;
 		outputSample(ch);
 	}
 
-	private int operator(final int phase, final int gain, final boolean rectify) {
+	private int operator(int phase, int gain, boolean rectify) {
 		return exp((logsin(phase, rectify) + gain));
 	}
 
@@ -283,10 +283,9 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 	}
 
 	// Twiddler t = new Twiddler(0.4);
-	private int setenvelope(final int[] instrument, final EnvState[] state, final int[] vol, final int ch,
-			final boolean isCarrier) {
-		final boolean keyscaleRate = ((instrument[(isCarrier ? 1 : 0)] & (BIT4)) != 0);
-		final int ksrShift = keyscaleRate ? (octave[ch] << 1) + (freq[ch] >> 8) : octave[ch] >> 1;
+	private int setenvelope(int[] instrument, EnvState[] state, int[] vol, int ch, boolean isCarrier) {
+		boolean keyscaleRate = ((instrument[(isCarrier ? 1 : 0)] & (BIT4)) != 0);
+		int ksrShift = keyscaleRate ? (octave[ch] << 1) + (freq[ch] >> 8) : octave[ch] >> 1;
 		// ^ the key scaling bit (java should really have unions, this is such a
 		// mess)
 		/*
@@ -427,7 +426,7 @@ public class VRC7SoundChip implements ExpansionSoundChip {
 	}
 
 	@Override
-	public final void write(int register, int data) {
+	public void write(int register, int data) {
 		switch (register) {
 		case 0:
 		case 1:

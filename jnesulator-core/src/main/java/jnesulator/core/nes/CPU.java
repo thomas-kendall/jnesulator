@@ -12,15 +12,15 @@ public class CPU {
 		ONCARRY, ALWAYS; // type of dummy read
 	}
 
-	private final static boolean decimalModeEnable = false, idleLoopSkip = true;
-	private final static String[] opcodes = opcodes();
+	private static final boolean decimalModeEnable = false, idleLoopSkip = true;
+	private static final String[] opcodes = opcodes();
 	// Battletoads Hack until I get around to making a truly cycle accurate CPU
 	// core.
 	// Delays the write of a STA, STX, or STY until the first cycle of the NEXT
 	// instruction
 	// which is enough to move it a few PPU clocks after the scroll is changed
 	// making sure that Battletoads gets its sprite 0 hit.
-	final private static boolean battletoadsHackOn = true;
+	private static final boolean battletoadsHackOn = true;
 
 	public static String[] opcodes() {
 		// %1 1st byte, %2 2nd byte, %3 relative offset from PC
@@ -285,7 +285,6 @@ public class CPU {
 		return op;
 	}
 
-	private final CPURAM ram;
 	private int cycles; // increment to steal cycles from cpu
 	public int clocks; // use for synchronizing with cpu
 	private int A, X, Y, S; // registers
@@ -295,6 +294,8 @@ public class CPU {
 			logging = false;
 	private int pb = 0;// set to 1 if access crosses page boundary
 
+	// TODO: make this private, add methods for hasInterrupt() and
+	// decrementInterrupt()
 	public int interrupt = 0;
 	public boolean nmiNext = false, idle = false;
 	// NES 6502 is missing decimal mode, but most other 6502s have it
@@ -306,8 +307,10 @@ public class CPU {
 
 	OutputStreamWriter w; // debug log writer
 
-	public CPU(final CPURAM cpuram) {
-		ram = cpuram;
+	private NES nes;
+
+	public CPU(NES nes) {
+		this.nes = nes;
 		// ram is the ONLY thing the cpu tries to talk to.
 		if (logging) {
 			startLog();
@@ -316,29 +319,29 @@ public class CPU {
 
 	private int abs() {
 		// absolute mode
-		return ram.read(PC++) + (ram.read(PC++) << 8);
+		return nes.getCPURAM().read(PC++) + (nes.getCPURAM().read(PC++) << 8);
 	}
 
-	private int abs(final int reg, final dummy dummy) {
+	private int abs(int reg, dummy dummy) {
 		// absolute plus value from reg
-		final int addr = (ram.read(PC++) | (ram.read(PC++) << 8));
+		int addr = (nes.getCPURAM().read(PC++) | (nes.getCPURAM().read(PC++) << 8));
 
 		if (addr >> 8 != (addr + reg) >> 8) {
 			pb = 1;
 		}
 
 		if ((addr & 0xFF00) != ((addr + reg) & 0xFF00) && dummy == dummy.ONCARRY) {
-			ram.read((addr & 0xFF00) | ((addr + reg) & 0xFF));
+			nes.getCPURAM().read((addr & 0xFF00) | ((addr + reg) & 0xFF));
 		}
 		if (dummy == dummy.ALWAYS) {
-			ram.read((addr & 0xFF00) | ((addr + reg) & 0xFF));
+			nes.getCPURAM().read((addr & 0xFF00) | ((addr + reg) & 0xFF));
 		}
 
 		return (addr + reg) & 0xffff;
 	}
 
-	private void adc(final int addr) {
-		final int value = ram.read(addr);
+	private void adc(int addr) {
+		int value = nes.getCPURAM().read(addr);
 		int result;
 		if (decimalModeFlag && decimalModeEnable) {
 			int AL = (A & 0xF) + (value & 0xF) + (carryFlag ? 1 : 0);
@@ -360,74 +363,74 @@ public class CPU {
 	}
 
 	// Unofficial opcodes
-	private void ahx(final int addr) {
-		final int data = (A & X & ((addr >> 8) + 1)) & 0xFF;
-		final int tmp = (addr - Y) & 0xFF;
+	private void ahx(int addr) {
+		int data = (A & X & ((addr >> 8) + 1)) & 0xFF;
+		int tmp = (addr - Y) & 0xFF;
 		if ((Y + tmp) <= 0xFF) {
-			ram.write(addr, data);
+			nes.getCPURAM().write(addr, data);
 		} else {
-			ram.write(addr, ram.read(addr));
+			nes.getCPURAM().write(addr, nes.getCPURAM().read(addr));
 		}
 	}
 
-	private void alr(final int addr) {
+	private void alr(int addr) {
 		and(addr);
 		lsrA();
 	}
 
-	private void anc(final int addr) {
+	private void anc(int addr) {
 		and(addr);
 		carryFlag = negativeFlag;
 	}
 
-	private void and(final int addr) {
-		A &= ram.read(addr);
+	private void and(int addr) {
+		A &= nes.getCPURAM().read(addr);
 		setflags(A);
 	}
 
-	private void arr(final int addr) {
-		A = (((ram.read(addr) & A) >> 1) | (carryFlag ? 0x80 : 0x00));
+	private void arr(int addr) {
+		A = (((nes.getCPURAM().read(addr) & A) >> 1) | (carryFlag ? 0x80 : 0x00));
 		setflags(A);
 
-		carryFlag = ((A & (utils.BIT6)) != 0);
-		overflowFlag = carryFlag ^ ((A & (utils.BIT5)) != 0);
+		carryFlag = ((A & (Utils.BIT6)) != 0);
+		overflowFlag = carryFlag ^ ((A & (Utils.BIT5)) != 0);
 	}
 
-	private void asl(final int addr) {
-		int data = ram.read(addr);
-		ram.write(addr, data); // dummy write
-		carryFlag = ((data & (utils.BIT7)) != 0);
+	private void asl(int addr) {
+		int data = nes.getCPURAM().read(addr);
+		nes.getCPURAM().write(addr, data); // dummy write
+		carryFlag = ((data & (Utils.BIT7)) != 0);
 		data = data << 1;
 		data &= 0xff;
 		setflags(data);
-		ram.write(addr, data);
+		nes.getCPURAM().write(addr, data);
 	}
 
 	private void aslA() {
-		carryFlag = ((A & (utils.BIT7)) != 0);
+		carryFlag = ((A & (Utils.BIT7)) != 0);
 		A <<= 1;
 		A &= 0xff;
 		setflags(A);
 
 	}
 
-	private void axs(final int addr) {
-		X = ((A & X) - ram.read(addr)) & 0xff;
+	private void axs(int addr) {
+		X = ((A & X) - nes.getCPURAM().read(addr)) & 0xff;
 		setflags(X);
 		carryFlag = (X >= 0);
 	}
 
 	// Instructions
-	private void bit(final int addr) {
-		final int data = ram.read(addr);
+	private void bit(int addr) {
+		int data = nes.getCPURAM().read(addr);
 		zeroFlag = ((data & A) == 0);
-		negativeFlag = ((data & (utils.BIT7)) != 0);
-		overflowFlag = ((data & (utils.BIT6)) != 0);
+		negativeFlag = ((data & (Utils.BIT7)) != 0);
+		overflowFlag = ((data & (Utils.BIT6)) != 0);
 	}
 
-	private void branch(final boolean isTaken) {
+	private void branch(boolean isTaken) {
 		if (isTaken) {
-			final int pcprev = PC + 1;// store prev. PC
+			int pcprev = PC + 1;// store prev. PC
 			PC = rel();
 			// System.err.println(pcprev + " "+ PC);
 			// page boundary penalty
@@ -449,34 +452,34 @@ public class CPU {
 	private void breakinterrupt() {
 		// same as interrupt but BRK flag is turned on
 		log("**BREAK**");
-		ram.read(PC++); // dummy fetch
+		nes.getCPURAM().read(PC++); // dummy fetch
 		push(PC >> 8); // high bit 1st
 		push(PC & 0xFF);// check that this pushes right address
-		push(flagstobyte() | utils.BIT4 | utils.BIT5);// push byte w/bits 4+5
+		push(flagstobyte() | Utils.BIT4 | Utils.BIT5);// push byte w/bits 4+5
 														// set
-		PC = ram.read(0xFFFE) + (ram.read(0xFFFF) << 8);
+		PC = nes.getCPURAM().read(0xFFFE) + (nes.getCPURAM().read(0xFFFF) << 8);
 		interruptsDisabled = true;
 	}
 
-	private void bytetoflags(final int statusbyte) {
+	private void bytetoflags(int statusbyte) {
 
-		negativeFlag = ((statusbyte & utils.BIT7) != 0);
-		overflowFlag = ((statusbyte & utils.BIT6) != 0);
+		negativeFlag = ((statusbyte & Utils.BIT7) != 0);
+		overflowFlag = ((statusbyte & Utils.BIT6) != 0);
 		// breakFlag = ((b & 32) != 0);
 		// unusedFlag = ((b & 16) != 0);
 		// actually nestest wants the unused flag to always be zero,
 		// and doesn't set the break flag with a plp
-		decimalModeFlag = ((statusbyte & utils.BIT3) != 0);
-		interruptsDisabled = ((statusbyte & utils.BIT2) != 0);
-		zeroFlag = ((statusbyte & utils.BIT1) != 0);
-		carryFlag = ((statusbyte & utils.BIT0) != 0);
+		decimalModeFlag = ((statusbyte & Utils.BIT3) != 0);
+		interruptsDisabled = ((statusbyte & Utils.BIT2) != 0);
+		zeroFlag = ((statusbyte & Utils.BIT1) != 0);
+		carryFlag = ((statusbyte & Utils.BIT0) != 0);
 
 	}
 
-	private void cmp(final int regval, final int addr) {
-		final int result = regval - ram.read(addr);
+	private void cmp(int regval, int addr) {
+		int result = regval - nes.getCPURAM().read(addr);
 		if (result < 0) {
-			negativeFlag = ((result & (utils.BIT7)) != 0);
+			negativeFlag = ((result & (Utils.BIT7)) != 0);
 			carryFlag = false;
 			zeroFlag = false;
 		} else if (result == 0) {
@@ -484,24 +487,24 @@ public class CPU {
 			carryFlag = true;
 			zeroFlag = true;
 		} else {
-			negativeFlag = ((result & (utils.BIT7)) != 0);
+			negativeFlag = ((result & (Utils.BIT7)) != 0);
 			carryFlag = true;
 			zeroFlag = false;
 		}
 	}
 
-	private void dcp(final int regval, final int addr) {
+	private void dcp(int regval, int addr) {
 		dec(addr);
 		cmp(regval, addr);
 	}
 
-	private void dec(final int addr) {
-		int tmp = ram.read(addr);
-		ram.write(addr, tmp);
+	private void dec(int addr) {
+		int tmp = nes.getCPURAM().read(addr);
+		nes.getCPURAM().write(addr, tmp);
 		// dummy write
 		--tmp;
 		tmp &= 0xff;
-		ram.write(addr, tmp);
+		nes.getCPURAM().write(addr, tmp);
 		// THEN real write
 		setflags(tmp);
 	}
@@ -525,16 +528,16 @@ public class CPU {
 		previntflag = interruptsDisabled;
 	}
 
-	private void eor(final int addr) {
-		A ^= ram.read(addr);
+	private void eor(int addr) {
+		A ^= nes.getCPURAM().read(addr);
 		A &= 0xff;
 		setflags(A);
 	}
 
-	public final int flagstobyte() {
-		return ((negativeFlag ? utils.BIT7 : 0) | (overflowFlag ? utils.BIT6 : 0) | utils.BIT5
-				| (decimalModeFlag ? utils.BIT3 : 0) | (interruptsDisabled ? utils.BIT2 : 0)
-				| (zeroFlag ? utils.BIT1 : 0) | (carryFlag ? utils.BIT0 : 0));
+	public int flagstobyte() {
+		return ((negativeFlag ? Utils.BIT7 : 0) | (overflowFlag ? Utils.BIT6 : 0) | Utils.BIT5
+				| (decimalModeFlag ? Utils.BIT3 : 0) | (interruptsDisabled ? Utils.BIT2 : 0)
+				| (zeroFlag ? Utils.BIT1 : 0) | (carryFlag ? Utils.BIT0 : 0));
 	}
 
 	private void flushLog() {
@@ -553,45 +556,46 @@ public class CPU {
 		return PC++;
 	}
 
-	private void inc(final int addr) {
-		int tmp = ram.read(addr);
-		ram.write(addr, tmp);
+	private void inc(int addr) {
+		int tmp = nes.getCPURAM().read(addr);
+		nes.getCPURAM().write(addr, tmp);
 		// dummy write
 		++tmp;
 		tmp &= 0xff;
-		ram.write(addr, tmp);
+		nes.getCPURAM().write(addr, tmp);
 		// THEN real write
 		setflags(tmp);
 	}
 
 	private int ind() {
 		// weird mode. only used by jmp
-		final int readloc = abs();
-		return ram.read(readloc) + (ram.read(((readloc & 0xff) == 0xff) ? readloc - 0xff : readloc + 1) << 8);
+		int readloc = abs();
+		return nes.getCPURAM().read(readloc)
+				+ (nes.getCPURAM().read(((readloc & 0xff) == 0xff) ? readloc - 0xff : readloc + 1) << 8);
 		// if reading from the last byte in a page, high bit of address
 		// is taken from first byte on the page, not first byte on NEXT page.
 	}
 
 	private int indX() {
 		// indirect mode
-		final int arg = ram.read(PC++);
-		return ram.read((arg + X) & 0xff) + (ram.read((arg + 1 + X) & 0xff) << 8);
+		int arg = nes.getCPURAM().read(PC++);
+		return nes.getCPURAM().read((arg + X) & 0xff) + (nes.getCPURAM().read((arg + 1 + X) & 0xff) << 8);
 		// doesn't suffer from the same bug as jump indirect
 	}
 
-	private int indY(final dummy dummy) {
-		final int arg = ram.read(PC++);
-		final int addr = (ram.read((arg) & 0xff) | (ram.read((arg + 1) & 0xff) << 8));
+	private int indY(dummy dummy) {
+		int arg = nes.getCPURAM().read(PC++);
+		int addr = (nes.getCPURAM().read((arg) & 0xff) | (nes.getCPURAM().read((arg + 1) & 0xff) << 8));
 
 		if (addr >> 8 != (addr + Y) >> 8) {
 			pb = 1;
 		}
 
 		if ((addr & 0xFF00) != ((addr + Y) & 0xFF00) && dummy == dummy.ONCARRY) {
-			ram.read((addr & 0xFF00) | ((addr + Y) & 0xFF));
+			nes.getCPURAM().read((addr & 0xFF00) | ((addr + Y) & 0xFF));
 		}
 		if (dummy == dummy.ALWAYS) {
-			ram.read((addr & 0xFF00) | ((addr + Y) & 0xFF));
+			nes.getCPURAM().read((addr & 0xFF00) | ((addr + Y) & 0xFF));
 		}
 
 		return (addr + Y) & 0xffff;
@@ -604,20 +608,20 @@ public class CPU {
 	public void init(Integer initialPC) {// different than reset
 		// puts RAM in NES poweron state
 		for (int i = 0; i < 0x800; ++i) {
-			ram.write(i, 0xFF);
+			nes.getCPURAM().write(i, 0xFF);
 		}
 
-		ram.write(0x0008, 0xF7);
-		ram.write(0x0009, 0xEF);
-		ram.write(0x000A, 0xDF);
-		ram.write(0x000F, 0xBF);
+		nes.getCPURAM().write(0x0008, 0xF7);
+		nes.getCPURAM().write(0x0009, 0xEF);
+		nes.getCPURAM().write(0x000A, 0xDF);
+		nes.getCPURAM().write(0x000F, 0xBF);
 
 		for (int i = 0x4000; i <= 0x400F; ++i) {
-			ram.write(i, 0x00);
+			nes.getCPURAM().write(i, 0x00);
 		}
 
-		ram.write(0x4015, 0x00);
-		ram.write(0x4017, 0x00);
+		nes.getCPURAM().write(0x4015, 0x00);
+		nes.getCPURAM().write(0x4017, 0x00);
 
 		// clocks = 27393; //correct for position we start vblank in
 		A = 0;
@@ -625,7 +629,7 @@ public class CPU {
 		Y = 0;
 		S = 0xFD;
 		if (initialPC == null) {
-			PC = ram.read(0xFFFD) * 256 + ram.read(0xFFFC);
+			PC = nes.getCPURAM().read(0xFFFD) * 256 + nes.getCPURAM().read(0xFFFC);
 		} else {
 			PC = initialPC;
 		}
@@ -637,52 +641,52 @@ public class CPU {
 		// System.err.println("IRQ " + interrupt);
 		push(PC >> 8); // high bit 1st
 		push(PC & 0xFF);// check that this pushes right address
-		push(flagstobyte() & ~utils.BIT4);
+		push(flagstobyte() & ~Utils.BIT4);
 		// jump to reset vector
-		PC = ram.read(0xFFFE) + (ram.read(0xFFFF) << 8);
+		PC = nes.getCPURAM().read(0xFFFE) + (nes.getCPURAM().read(0xFFFF) << 8);
 		interruptsDisabled = true;
 	}
 
-	private void isc(final int addr) {
+	private void isc(int addr) {
 		inc(addr);
 		sbc(addr);
 	}
 
-	private void jsr(final int addr) {
+	private void jsr(int addr) {
 		PC--;
-		ram.read(PC); // dummy fetch
+		nes.getCPURAM().read(PC); // dummy fetch
 		push(PC >> 8); // high bit 1st
 		push(PC & 0xFF);// check that this pushes right address
 		PC = addr;
 	}
 
-	private void las(final int addr) {
-		S &= ram.read(addr);
+	private void las(int addr) {
+		S &= nes.getCPURAM().read(addr);
 		A = X = S;
 		setflags(S);
 	}
 
-	private void lax(final int addr) {
-		A = X = ram.read(addr);
+	private void lax(int addr) {
+		A = X = nes.getCPURAM().read(addr);
 		setflags(A);
 	}
 
-	private void lda(final int addr) {
-		A = ram.read(addr);
+	private void lda(int addr) {
+		A = nes.getCPURAM().read(addr);
 		setflags(A);
 	}
 
-	private void ldx(final int addr) {
-		X = ram.read(addr);
+	private void ldx(int addr) {
+		X = nes.getCPURAM().read(addr);
 		setflags(X);
 	}
 
-	private void ldy(final int addr) {
-		Y = ram.read(addr);
+	private void ldy(int addr) {
+		Y = nes.getCPURAM().read(addr);
 		setflags(Y);
 	}
 
-	public final void log(String tolog) {
+	public void log(String tolog) {
 		if (logging) {
 			try {
 				w.write(tolog);
@@ -692,18 +696,18 @@ public class CPU {
 		}
 	}
 
-	private void lsr(final int addr) {
-		int data = ram.read(addr);
-		ram.write(addr, data); // dummy write
-		carryFlag = ((data & (utils.BIT0)) != 0);
+	private void lsr(int addr) {
+		int data = nes.getCPURAM().read(addr);
+		nes.getCPURAM().write(addr, data); // dummy write
+		carryFlag = ((data & (Utils.BIT0)) != 0);
 		data >>= 1;
 		data &= 0x7F;
-		ram.write(addr, data);
+		nes.getCPURAM().write(addr, data);
 		setflags(data);
 	}
 
 	private void lsrA() {
-		carryFlag = ((A & (utils.BIT0)) != 0);
+		carryFlag = ((A & (Utils.BIT0)) != 0);
 		A >>= 1;
 		A &= 0x7F;
 		setflags(A);
@@ -720,14 +724,14 @@ public class CPU {
 		// System.err.println(" NMI");
 		push(PC >> 8); // high bit 1st
 		push((PC) & 0xFF);// check that this pushes right address
-		push(flagstobyte() & ~utils.BIT4);
-		PC = ram.read(0xFFFA) + (ram.read(0xFFFB) << 8);
+		push(flagstobyte() & ~Utils.BIT4);
+		PC = nes.getCPURAM().read(0xFFFA) + (nes.getCPURAM().read(0xFFFB) << 8);
 		cycles += 7;
 		interruptsDisabled = true;
 	}
 
-	private void ora(final int addr) {
-		A |= ram.read(addr);
+	private void ora(int addr) {
+		A |= nes.getCPURAM().read(addr);
 		A &= 0xff;
 		setflags(A);
 	}
@@ -735,11 +739,11 @@ public class CPU {
 	private int pop() {
 		++S;
 		S &= 0xff;
-		return ram.read(0x100 + S);
+		return nes.getCPURAM().read(0x100 + S);
 	}
 
-	public void push(final int byteToPush) {
-		ram.write((0x100 + (S & 0xff)), byteToPush);
+	public void push(int byteToPush) {
+		nes.getCPURAM().write((0x100 + (S & 0xff)), byteToPush);
 		--S;
 		S &= 0xff;
 	}
@@ -747,56 +751,56 @@ public class CPU {
 	private int rel() {
 		// returns actual value of PC, not memory location to look at
 		// because only branches use this
-		return ((byte) ram.read(PC++)) + PC;
+		return ((byte) nes.getCPURAM().read(PC++)) + PC;
 	}
 
 	public void reset() {
-		PC = ram.read(0xFFFD) * 256 + ram.read(0xFFFC);
-		ram.write(0x4015, 0);
-		ram.write(0x4017, ram.read(0x4017));
+		PC = nes.getCPURAM().read(0xFFFD) * 256 + nes.getCPURAM().read(0xFFFC);
+		nes.getCPURAM().write(0x4015, 0);
+		nes.getCPURAM().write(0x4017, nes.getCPURAM().read(0x4017));
 		// disable audio on reset
 		S -= 3;
 		S &= 0xff;
 		interruptsDisabled = true;
 	}
 
-	private void rla(final int addr) {
+	private void rla(int addr) {
 		rol(addr);
 		and(addr);
 	}
 
-	private void rol(final int addr) {
-		int data = (ram.read(addr));
-		ram.write(addr, data); // dummy write
+	private void rol(int addr) {
+		int data = (nes.getCPURAM().read(addr));
+		nes.getCPURAM().write(addr, data); // dummy write
 		data = (data << 1) | (carryFlag ? 1 : 0);
-		carryFlag = ((data & (utils.BIT8)) != 0);
+		carryFlag = ((data & (Utils.BIT8)) != 0);
 		data &= 0xFF;
 		setflags(data);
-		ram.write(addr, data);
+		nes.getCPURAM().write(addr, data);
 	}
 
 	private void rolA() {
 		A = A << 1 | (carryFlag ? 1 : 0);
-		carryFlag = ((A & (utils.BIT8)) != 0);
+		carryFlag = ((A & (Utils.BIT8)) != 0);
 		A &= 0xFF;
 		setflags(A);
 	}
 
-	private void ror(final int addr) {
-		int data = ram.read(addr);
-		ram.write(addr, data); // dummy write
-		final boolean tmp = carryFlag;
-		carryFlag = ((data & (utils.BIT0)) != 0);
+	private void ror(int addr) {
+		int data = nes.getCPURAM().read(addr);
+		nes.getCPURAM().write(addr, data); // dummy write
+		boolean tmp = carryFlag;
+		carryFlag = ((data & (Utils.BIT0)) != 0);
 		data >>= 1;
 		data &= 0x7F;
 		data |= (tmp ? 0x80 : 0);
 		setflags(data);
-		ram.write(addr, data);
+		nes.getCPURAM().write(addr, data);
 	}
 
 	private void rorA() {
-		final boolean tmp = carryFlag;
-		carryFlag = ((A & (utils.BIT0)) != 0);
+		boolean tmp = carryFlag;
+		carryFlag = ((A & (Utils.BIT0)) != 0);
 		A >>= 1;
 		A &= 0x7F;
 		A |= (tmp ? 128 : 0);
@@ -810,20 +814,21 @@ public class CPU {
 
 	private void rti() {
 		// System.err.println("RTI");
-		ram.read(PC++); // dummy fetch
+		nes.getCPURAM().read(PC++); // dummy fetch
 		bytetoflags(pop());
 		PC = (pop() & 0xff) | (pop() << 8); // not plus one
 	}
 
 	private void rts() {
-		ram.read(PC++); // dummy fetch
+		nes.getCPURAM().read(PC++); // dummy fetch
 		PC = (pop() & 0xff) | (pop() << 8);// page crossing bug again?
 		PC++;
 	}
 
-	public final void runcycle(final int scanline, final int pixel) {
-		ram.read(0x4000); // attempt to sync the APU every cycle and make dmc
-							// irqs work properly, which they still don't. Feh.
+	public void runcycle(int scanline, int pixel) {
+		nes.getCPURAM().read(0x4000); // attempt to sync the APU every cycle and
+										// make dmc
+		// irqs work properly, which they still don't. Feh.
 		++clocks;
 
 		// guard against overflows
@@ -842,9 +847,9 @@ public class CPU {
 		// if ((PC & 0xffff) != PC) {
 		// System.err.println("houston we have PC problem");
 		// }
-		if (ram.apu.sprdma_count > 0) {
-			ram.apu.sprdma_count--;
-			if (ram.apu.sprdma_count == 0) {
+		if (nes.getAPU().sprdma_count > 0) {
+			nes.getAPU().sprdma_count--;
+			if (nes.getAPU().sprdma_count == 0) {
 				cycles += 513;
 			}
 			// this doesn't look right any more
@@ -852,7 +857,7 @@ public class CPU {
 		}
 
 		if (dirtyBattletoadsHack && cycles == 1) {
-			ram.write(hackAddr, hackData);
+			nes.getCPURAM().write(hackAddr, hackData);
 			dirtyBattletoadsHack = false;
 		}
 
@@ -897,7 +902,7 @@ public class CPU {
 		}
 
 		pb = 0;
-		final int instr = ram.read(PC++);
+		int instr = nes.getCPURAM().read(PC++);
 		// note:
 		if (logging) {
 			// that looks redundant, but this is a really expensive operation to
@@ -909,8 +914,9 @@ public class CPU {
 			// TODO: Optimize this! It gets called a LOT
 			// and slows logging to 16 fps
 			// even when not actually writing anything
-			String op = String.format(opcodes[instr], ram.read(PC), ram.read(PC + 1), PC + (byte) (ram.read(PC)) + 1);
-			log(utils.hex(PC - 1) + " " + utils.hex(instr) + String.format(" %-14s ", op) + status() + " CYC:" + pixel
+			String op = String.format(opcodes[instr], nes.getCPURAM().read(PC), nes.getCPURAM().read(PC + 1),
+					PC + (byte) (nes.getCPURAM().read(PC)) + 1);
+			log(Utils.hex(PC - 1) + " " + Utils.hex(instr) + String.format(" %-14s ", op) + status() + " CYC:" + pixel
 					+ " SL:" + scanline + "\n");
 		}
 		if (cycles == 0) {
@@ -1341,7 +1347,7 @@ public class CPU {
 		case 0xf2:
 			System.err.println("KIL - CPU locked");
 			flushLog();
-			ram.apu.nes.runEmulation = false;
+			nes.runEmulation = false;
 			break;
 		// LAS (unofficial)
 		case 0xbb:
@@ -1869,25 +1875,25 @@ public class CPU {
 			setflags(X);
 			break;
 		case 0x48:
-			ram.read(PC + 1); // dummy fetch
+			nes.getCPURAM().read(PC + 1); // dummy fetch
 			push(A);
 			cycles += 3;
 			break;
 		case 0x68:
-			ram.read(PC + 1); // dummy fetch
+			nes.getCPURAM().read(PC + 1); // dummy fetch
 			A = pop();
 			setflags(A);
 			cycles += 4;
 			break;
 		case 0x08:
-			ram.read(PC + 1); // dummy fetch
-			push(flagstobyte() | utils.BIT4);
+			nes.getCPURAM().read(PC + 1); // dummy fetch
+			push(flagstobyte() | Utils.BIT4);
 			cycles += 3;
 			break;
 		case 0x28:
 			// plp
 			delayInterrupt();
-			ram.read(PC + 1); // dummy fetch
+			nes.getCPURAM().read(PC + 1); // dummy fetch
 			bytetoflags(pop());
 			cycles += 4;
 			break;
@@ -1929,7 +1935,7 @@ public class CPU {
 			break;
 		default:
 			cycles += 2;
-			System.err.println("Illegal opcode:" + utils.hex(instr) + " @ " + utils.hex(PC - 1));
+			System.err.println("Illegal opcode:" + Utils.hex(instr) + " @ " + Utils.hex(PC - 1));
 			break;
 		}
 		pb = 0;
@@ -1937,11 +1943,11 @@ public class CPU {
 	}
 
 	private void sax(int addr) {
-		ram.write(addr, (A & X) & 0xFF);
+		nes.getCPURAM().write(addr, (A & X) & 0xFF);
 	}
 
-	private void sbc(final int addr) {
-		final int value = ram.read(addr);
+	private void sbc(int addr) {
+		int value = nes.getCPURAM().read(addr);
 		int result;
 		if (decimalModeFlag && decimalModeEnable) {
 			int AL = (A & 0xF) - (value & 0xF) + (carryFlag ? 1 : 0) - 1;
@@ -1963,9 +1969,9 @@ public class CPU {
 
 	}
 
-	private void setflags(final int result) {
+	private void setflags(int result) {
 		zeroFlag = (result == 0);
-		negativeFlag = ((result & (utils.BIT7)) != 0);
+		negativeFlag = ((result & (Utils.BIT7)) != 0);
 	}
 
 	public void setNMI(boolean val) {
@@ -1987,23 +1993,23 @@ public class CPU {
 		X = value & 0xff;
 	}
 
-	private void shx(final int addr) {
-		final int data = (X & ((addr >> 8) + 1)) & 0xFF;
-		final int tmp = (addr - Y) & 0xFF;
+	private void shx(int addr) {
+		int data = (X & ((addr >> 8) + 1)) & 0xFF;
+		int tmp = (addr - Y) & 0xFF;
 		if ((Y + tmp) <= 0xFF) {
-			ram.write(addr, data);
+			nes.getCPURAM().write(addr, data);
 		} else {
-			ram.write(addr, ram.read(addr));
+			nes.getCPURAM().write(addr, nes.getCPURAM().read(addr));
 		}
 	}
 
-	private void shy(final int addr) {
-		final int data = (Y & ((addr >> 8) + 1)) & 0xFF;
-		final int tmp = (addr - X) & 0xFF;
+	private void shy(int addr) {
+		int data = (Y & ((addr >> 8) + 1)) & 0xFF;
+		int tmp = (addr - X) & 0xFF;
 		if ((X + tmp) <= 0xFF) {
-			ram.write(addr, data);
+			nes.getCPURAM().write(addr, data);
 		} else {
-			ram.write(addr, ram.read(addr));
+			nes.getCPURAM().write(addr, nes.getCPURAM().read(addr));
 		}
 	}
 
@@ -2017,9 +2023,9 @@ public class CPU {
 		eor(addr);
 	}
 
-	private void sta(final int addr) {
+	private void sta(int addr) {
 		if (!battletoadsHackOn) {
-			ram.write(addr, A);
+			nes.getCPURAM().write(addr, A);
 		} else {
 			hackAddr = addr;
 			hackData = A;
@@ -2047,8 +2053,8 @@ public class CPU {
 
 	public String status() {
 		// TODO: convert to format string. lots of wasted strings
-		return " PC:" + utils.hex(PC) + " A:" + utils.hex(A) + " X:" + utils.hex(X) + " Y:" + utils.hex(Y) + " P:"
-				+ utils.hex(flagstobyte()) + " SP:" + utils.hex(S);
+		return " PC:" + Utils.hex(PC) + " A:" + Utils.hex(A) + " X:" + Utils.hex(X) + " Y:" + Utils.hex(Y) + " P:"
+				+ Utils.hex(flagstobyte()) + " SP:" + Utils.hex(S);
 	}
 
 	public void stealcycles(int cyclestosteal) {
@@ -2061,9 +2067,9 @@ public class CPU {
 		flushLog();
 	}
 
-	private void stx(final int addr) {
+	private void stx(int addr) {
 		if (!battletoadsHackOn) {
-			ram.write(addr, X);
+			nes.getCPURAM().write(addr, X);
 		} else {
 			hackAddr = addr;
 			hackData = X;
@@ -2071,9 +2077,9 @@ public class CPU {
 		}
 	}
 
-	private void sty(final int addr) {
+	private void sty(int addr) {
 		if (!battletoadsHackOn) {
-			ram.write(addr, Y);
+			nes.getCPURAM().write(addr, Y);
 		} else {
 			hackAddr = addr;
 			hackData = Y;
@@ -2083,27 +2089,27 @@ public class CPU {
 
 	private void tas(int addr) {
 		S = A & X;
-		final int data = (S & ((addr >> 8) + 1)) & 0xFF;
-		final int tmp = (addr - Y) & 0xFF;
+		int data = (S & ((addr >> 8) + 1)) & 0xFF;
+		int tmp = (addr - Y) & 0xFF;
 		if ((Y + tmp) <= 0xFF) {
-			ram.write(addr, data);
+			nes.getCPURAM().write(addr, data);
 		} else {
-			ram.write(addr, ram.read(addr));
+			nes.getCPURAM().write(addr, nes.getCPURAM().read(addr));
 		}
 	}
 
 	private void xaa(int addr) {
-		A = X & ram.read(addr);
+		A = X & nes.getCPURAM().read(addr);
 		setflags(A);
 	}
 
 	private int zpg() {
 		// zero page mode
-		return ram.read(PC++);
+		return nes.getCPURAM().read(PC++);
 	}
 
-	private int zpg(final int reg) {
+	private int zpg(int reg) {
 		// zero page added to register (modulus page boundary)
-		return (ram.read(PC++) + reg) & 0xff;
+		return (nes.getCPURAM().read(PC++) + reg) & 0xff;
 	}
 }

@@ -1,5 +1,6 @@
 package jnesulator.core.nes.audio;
 
+// TODO: Seems like this should just be an interface
 public abstract class Timer {
 
 	protected int period;
@@ -7,9 +8,9 @@ public abstract class Timer {
 
 	public abstract void clock();
 
-	public abstract void clock(final int cycles);
+	public abstract void clock(int cycles);
 
-	public final int getperiod() {
+	public int getperiod() {
 		return period;
 	}
 
@@ -21,5 +22,5 @@ public abstract class Timer {
 
 	public abstract void setduty(int[] duty);
 
-	public abstract void setperiod(final int newperiod);
+	public abstract void setperiod(int newperiod);
 }

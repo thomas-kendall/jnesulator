@@ -1,8 +1,8 @@
 package jnesulator.core.nes.audio;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.Utils;
 
-public class Namco163SoundChip implements ExpansionSoundChip {
+public class Namco163SoundChip implements IExpansionSoundChip {
 
 	/*
 	 * Warning for anyone making Namco 163 music: As the number of channels used
@@ -11,7 +11,7 @@ public class Namco163SoundChip implements ExpansionSoundChip {
 	 * channels causes very noticeable 10khz noise which is not implemented
 	 * here.
 	 */
-	private final int[] registers = new int[128], out = new int[8];
+	private int[] registers = new int[128], out = new int[8];
 	private int numch, cycpos = 0, curch = 0;
 
 	int lpaccum = 0;
@@ -28,12 +28,12 @@ public class Namco163SoundChip implements ExpansionSoundChip {
 		}
 	}
 
-	private void clock_channel(final int ch) {
+	private void clock_channel(int ch) {
 		// get channel register start position
-		final int off = 0x80 - (8 * (ch + 1));
+		int off = 0x80 - (8 * (ch + 1));
 		// get phase/freq value
 		int phase = (registers[off + 5] << 16) + (registers[off + 3] << 8) + registers[off + 1];
-		final int f = ((registers[off + 4] & 3) << 16) + (registers[off + 2] << 8) + registers[off];
+		int f = ((registers[off + 4] & 3) << 16) + (registers[off + 2] << 8) + registers[off];
 		// get waveform length
 		int len = (64 - (registers[off + 4] >> 2)) * 4;
 		// ugly heuristics: some NSFs were written with the
@@ -53,11 +53,11 @@ public class Namco163SoundChip implements ExpansionSoundChip {
 		}
 
 		// get waveform start position
-		final int wavestart = registers[off + 6];
+		int wavestart = registers[off + 6];
 		// get volume
 		phase = (phase + f) % (len << 16);
-		final int volume = registers[off + 7] & 0xf;
-		final int output = (getWavefromRAM(((phase >> 16) + wavestart) & 0xff) - 8) * volume;
+		int volume = registers[off + 7] & 0xf;
+		int output = (getWavefromRAM(((phase >> 16) + wavestart) & 0xff) - 8) * volume;
 		// store phase back
 		registers[off + 5] = (phase >> 16) & 0xff;
 		registers[off + 3] = (phase >> 8) & 0xff;
@@ -71,9 +71,9 @@ public class Namco163SoundChip implements ExpansionSoundChip {
 		return lpaccum << 2;
 	}
 
-	private int getWavefromRAM(final int addr) {
-		final int b = registers[(addr) >> 1];
-		return ((addr & (utils.BIT0)) != 0) ? b >> 4 : b & 0xf;
+	private int getWavefromRAM(int addr) {
+		int b = registers[(addr) >> 1];
+		return ((addr & (Utils.BIT0)) != 0) ? b >> 4 : b & 0xf;
 	}
 
 	private void output() {

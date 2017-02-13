@@ -1,27 +1,34 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
-import jnesulator.core.nes.audio.ExpansionSoundChip;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
+import jnesulator.core.nes.audio.IExpansionSoundChip;
 import jnesulator.core.nes.audio.Sunsoft5BSoundChip;
 
-public class FME7Mapper extends Mapper {
+public class FME7Mapper extends BaseMapper {
 
 	private int commandRegister = 0;
+
 	private int soundCommand = 0;
 	private int[] charbanks = new int[8]; // 8 1k char rom banks
 	private int[] prgbanks = new int[4]; // 4 8k prg banks - PLUS 1 8k fixed one
 	private boolean ramEnable = true;
 	private boolean ramSelect = false;
 	private int irqcounter = 0xffff; // really needs to be unsigned but we'll
-										// cheese it
+	// cheese it
 	private boolean irqenabled;
 	private boolean irqclock;
 	private boolean hasInitSound = false;
-	private final ExpansionSoundChip sndchip = new Sunsoft5BSoundChip();
+	private IExpansionSoundChip sndchip = new Sunsoft5BSoundChip();
 	private boolean interrupted = false;
 
+	public FME7Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final int cartRead(int addr) {
+	public int cartRead(int addr) {
 		// five possible rom banks.
 		if (addr >= 0x6000) {
 			if (addr < 0x8000 && ramSelect) {
@@ -37,7 +44,7 @@ public class FME7Mapper extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -51,7 +58,7 @@ public class FME7Mapper extends Mapper {
 			if (!hasInitSound) {
 				// only initialize the sound chip if anything writes a sound
 				// command.
-				cpuram.apu.addExpnSound(sndchip);
+				getNES().getAPU().addExpnSound(sndchip);
 				hasInitSound = true;
 			}
 		} else if (addr == 0xa000) {
@@ -70,8 +77,8 @@ public class FME7Mapper extends Mapper {
 				setbanks();
 				break;
 			case 8:
-				ramEnable = ((data & (utils.BIT7)) != 0);
-				ramSelect = ((data & (utils.BIT6)) != 0);
+				ramEnable = ((data & (Utils.BIT7)) != 0);
+				ramSelect = ((data & (Utils.BIT6)) != 0);
 				prgbanks[0] = data & 0x3f;
 				setbanks();
 				break;
@@ -86,28 +93,28 @@ public class FME7Mapper extends Mapper {
 				// mirroring select
 				switch (data & 3) {
 				case 0:
-					setmirroring(Mapper.MirrorType.V_MIRROR);
+					setmirroring(MirrorType.V_MIRROR);
 					break;
 				case 1:
-					setmirroring(Mapper.MirrorType.H_MIRROR);
+					setmirroring(MirrorType.H_MIRROR);
 					break;
 				case 2:
-					setmirroring(Mapper.MirrorType.SS_MIRROR0);
+					setmirroring(MirrorType.SS_MIRROR0);
 					break;
 				case 3:
-					setmirroring(Mapper.MirrorType.SS_MIRROR1);
+					setmirroring(MirrorType.SS_MIRROR1);
 					break;
 				}
 			case 0xd:
 				// irq - let's put this in and hope it works
-				irqclock = ((data & (utils.BIT7)) != 0);
+				irqclock = ((data & (Utils.BIT7)) != 0);
 				// 2015-05: test by Teppples says that any value written here
 				// will acknowledge a pending interrupt
 
-				irqenabled = ((data & (utils.BIT0)) != 0);
+				irqenabled = ((data & (Utils.BIT0)) != 0);
 
-				if (interrupted && cpu.interrupt > 0) {
-					--cpu.interrupt;
+				if (interrupted && getNES().getCPU().interrupt > 0) {
+					--getNES().getCPU().interrupt;
 				}
 				interrupted = false;
 				// System.err.println(cpu.interrupt);
@@ -134,7 +141,7 @@ public class FME7Mapper extends Mapper {
 				irqcounter = 0xffff;
 				if (irqenabled && !interrupted) {
 					interrupted = true;
-					++cpu.interrupt;
+					++getNES().getCPU().interrupt;
 					// System.err.println("FME7 Interrupt");
 				}
 			} else {
@@ -144,9 +151,9 @@ public class FME7Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
+	public void loadrom(ROMLoader loader) throws BadMapperException {
 		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+		super.loadrom(loader);
 		// on startup:
 		prg_map = new int[40]; // (trollface)
 

@@ -1,17 +1,24 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Sunsoft03Mapper extends Mapper {
+public class Sunsoft03Mapper extends BaseMapper {
 
 	int[] chrbank = { 0, 0, 0, 0 };
+
 	private int irqctr = 0;
 	private boolean irqenable = false;
 	private boolean interrupted = false;
 	private boolean irqtoggle = false;
 
+	public Sunsoft03Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr >= 0x8800 && addr <= 0x8FFF) {
 			chrbank[0] = data;
 			setupchr();
@@ -36,10 +43,10 @@ public class Sunsoft03Mapper extends Mapper {
 			}
 		} else if (addr >= 0xD800 && addr <= 0xDFFF) {
 			if (interrupted) {
-				--cpu.interrupt;
+				--getNES().getCPU().interrupt;
 				interrupted = false;
 			}
-			irqenable = ((data & (utils.BIT4)) != 0);
+			irqenable = ((data & (Utils.BIT4)) != 0);
 			irqtoggle = false;
 		} else if (addr >= 0xE800 && addr <= 0xEFFF) {
 			switch (data & 3) {
@@ -64,12 +71,12 @@ public class Sunsoft03Mapper extends Mapper {
 	}
 
 	@Override
-	public void cpucycle(final int cycles) {
+	public void cpucycle(int cycles) {
 		if (irqenable) {
 			if (irqctr <= 0) {
 				irqctr = 0xFFFF;
 				if (!interrupted) {
-					++cpu.interrupt;
+					++getNES().getCPU().interrupt;
 					interrupted = true;
 				}
 				irqenable = false;
@@ -80,9 +87,8 @@ public class Sunsoft03Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// swappable bank
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);

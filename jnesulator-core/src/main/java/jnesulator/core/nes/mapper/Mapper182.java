@@ -1,11 +1,14 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Mapper182 extends Mapper {
+public class Mapper182 extends BaseMapper {
 	// Pirate MMC3 clone with scrambled registers
 
 	private int whichbank = 0;
+
 	private boolean prgconfig = false;
 	private boolean chrconfig = false;
 	private int irqctrreload = 0;
@@ -16,19 +19,23 @@ public class Mapper182 extends Mapper {
 	private int[] chrreg = { 0, 0, 0, 0, 0, 0 };
 	private boolean interrupted = false;
 
+	public Mapper182(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
 		}
 		// bankswitches here
 		// different register for even/odd writes
-		if (((addr & (utils.BIT0)) != 0)) {
+		if (((addr & (Utils.BIT0)) != 0)) {
 			// odd registers
 			if ((addr >= 0x8000) && (addr <= 0x9fff)) {
 				// mirroring setup
-				setmirroring(((data & (utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+				setmirroring(((data & (Utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 			} else if ((addr >= 0xA000) && (addr <= 0xBFFF)) {
 				// prg ram write protect
 				// cpuram.setPrgRAMEnable(!utils.getbit(data, 7));
@@ -45,12 +52,12 @@ public class Mapper182 extends Mapper {
 			if ((addr >= 0xA000) && (addr <= 0xBFFF)) {
 				// bank select
 				whichbank = data & 7;
-				prgconfig = ((data & (utils.BIT4)) != 0);
+				prgconfig = ((data & (Utils.BIT4)) != 0);
 				// if bit is false, 8000-9fff swappable and c000-dfff fixed to
 				// 2nd to last bank
 				// if bit is true, c000-dfff swappable and 8000-9fff fixed to
 				// 2nd to last bank
-				chrconfig = ((data & (utils.BIT5)) != 0);
+				chrconfig = ((data & (Utils.BIT5)) != 0);
 				// if false: 2 2k banks @ 0000-0fff, 4 1k banks in 1000-1fff
 				// if true: 4 1k banks @ 0000-0fff, 2 2k banks @ 1000-1fff
 				setupchr();
@@ -96,7 +103,7 @@ public class Mapper182 extends Mapper {
 			} else if ((addr >= 0xE000) && (addr <= 0xFFFF)) {
 				// any value here disables IRQ and acknowledges
 				if (interrupted) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 				}
 				interrupted = false;
 				irqenable = false;
@@ -106,9 +113,8 @@ public class Mapper182 extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			prg_map[32 - i] = prgsize - (1024 * i);
 		}
@@ -128,7 +134,7 @@ public class Mapper182 extends Mapper {
 			// 240.
 			return;
 		}
-		if (!ppu.mmc3CounterClocking()) {
+		if (!getNES().getPPU().mmc3CounterClocking()) {
 			return;
 		}
 
@@ -143,7 +149,7 @@ public class Mapper182 extends Mapper {
 				// irqs stop being generated if reload set to zero
 			}
 			if (irqenable && !interrupted) {
-				++cpu.interrupt;
+				++getNES().getCPU().interrupt;
 				interrupted = true;
 			}
 			irqctr = irqctrreload;

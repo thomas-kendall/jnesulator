@@ -10,7 +10,7 @@ import java.util.zip.CRC32;
 
 public class NTSCRenderer extends Renderer {
 
-	private final static List<Integer> lines;
+	private static final List<Integer> lines;
 	static {
 		lines = new ArrayList<>();
 		for (int line = 0; line < 240; ++line) {
@@ -21,7 +21,7 @@ public class NTSCRenderer extends Renderer {
 	// hm, if I downsampled these perfectly to 4Fsc i could get rid of matrix
 	// decode
 	// and the sine tables altogether...
-	private final static int[][] colorphases = { // int for alignment reasons
+	private static final int[][] colorphases = { // int for alignment reasons
 			{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, // 0x00
 			{ 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1 }, // 0x01
 			{ 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0 }, // 0x02
@@ -40,8 +40,8 @@ public class NTSCRenderer extends Renderer {
 			{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };// 0x0F
 	// i would like to replace these tables with logic but it's a tricky shape
 	// for a Karnaugh map
-	private final static float[][][] lumas = genlumas();
-	private final static int[][] coloremph = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+	private static final float[][][] lumas = genlumas();
+	private static final int[][] coloremph = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 			{ 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1 }, // X
 			{ 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0 }, // Y
 			{ 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1 }, // XY
@@ -49,18 +49,18 @@ public class NTSCRenderer extends Renderer {
 			{ 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1 }, // XZ
 			{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1 }, // YZ
 			{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } };// XYZ
-	private final static int[] colortbl = genColorCorrectTbl();
-	public final static float chroma_filterfreq = 3579000.f, pixel_rate = 42950000.f;
-	private final static int[] cbstphase = { 240 - 240, 0, 250 - 240, 0, 248 - 240, 0, 246 - 240, 0, 244 - 240, 0,
+	private static final int[] colortbl = genColorCorrectTbl();
+	public static final float chroma_filterfreq = 3579000.f, pixel_rate = 42950000.f;
+	private static final int[] cbstphase = { 240 - 240, 0, 250 - 240, 0, 248 - 240, 0, 246 - 240, 0, 244 - 240, 0,
 			242 - 240, 0 };
 	// starting point for color burst (depends on offset of previous line, even
 	// values not used in a progressive signal)
 
-	private final static int[][] iqm = { { 255, -244, 158 }, { 255, 69, -165 }, { 255, 282, 434 } };
+	private static final int[][] iqm = { { 255, -244, 158 }, { 255, 69, -165 }, { 255, 282, 434 } };
 
-	public final static int frame_w = 704 * 3;
+	public static final int frame_w = 704 * 3;
 
-	public static void box_filter(final float[] in, final float[] lpout, final float[] hpout, final int order) {
+	public static void box_filter(float[] in, float[] lpout, float[] hpout, int order) {
 		float accum = 0;
 		for (int i = 12; i < 2656 - 240; ++i) {
 			accum += in[i] - in[i - order];
@@ -69,7 +69,7 @@ public class NTSCRenderer extends Renderer {
 		}
 	}
 
-	public static int clamp(final int a) {
+	public static int clamp(int a) {
 		return (a != (a & 0xff)) ? ((a < 0) ? 0 : 255) : a;
 	}
 
@@ -121,7 +121,7 @@ public class NTSCRenderer extends Renderer {
 		return premultlumas;
 	}
 
-	public static void lowpass_filter(final float[] arr, final float order) {
+	public static void lowpass_filter(float[] arr, float order) {
 		float b = 0;
 		for (int i = 0; i < 2656 - 240; ++i) {
 			arr[i] -= b;
@@ -130,9 +130,9 @@ public class NTSCRenderer extends Renderer {
 		}
 	}
 
-	// private final static float sync = -0.359f;
+	// private static final float sync = -0.359f;
 	private int frames = 0;
-	private final float[] i_filter = new float[12], q_filter = new float[12];
+	private float[] i_filter = new float[12], q_filter = new float[12];
 
 	int[] frame = new int[frame_w * 240];
 	// Kernel kernel = new Kernel(3, 3,
@@ -156,15 +156,15 @@ public class NTSCRenderer extends Renderer {
 		}
 	}
 
-	private void cacheRender(final int[] nespixels, final int line, final int[] bgcolors, final boolean dotcrawl) {
+	private void cacheRender(int[] nespixels, int line, int[] bgcolors, boolean dotcrawl) {
 
 		// first of all, increment scanline numbers and get the offset for this
 		// line.
 		int offset = ((frames & 1) == 0 && dotcrawl) ? 0 : 6;
 		offset = (4 * line + offset) % 12; // 3 line dot crawl
-		final int[] inpixels = new int[256];
+		int[] inpixels = new int[256];
 		System.arraycopy(nespixels, line << 8, inpixels, 0, 256);
-		final long crc = crc32(inpixels, offset, bgcolors[line]);
+		long crc = crc32(inpixels, offset, bgcolors[line]);
 		// //you'd think crc32 would have too many collisions but i haven't seen
 		// a one
 		int[] outpixels;
@@ -179,12 +179,12 @@ public class NTSCRenderer extends Renderer {
 		System.arraycopy(outpixels, 0, frame, line * frame_w, frame_w);
 	}
 
-	public final int[] ntsc_decode(final float[] ntsc, final int offset) {
-		final float[] chroma = new float[2656 - 240];
-		final float[] luma = new float[2656 - 240];
-		final float[] eye = new float[2656 - 240];
-		final float[] queue = new float[2656 - 240];
-		final int[] line = new int[frame_w];
+	public int[] ntsc_decode(float[] ntsc, int offset) {
+		float[] chroma = new float[2656 - 240];
+		float[] luma = new float[2656 - 240];
+		float[] eye = new float[2656 - 240];
+		float[] queue = new float[2656 - 240];
+		int[] line = new int[frame_w];
 
 		// decodes one scan line of ntsc video and outputs as rgb packed in int
 		// uses the cheap TV method, which is filtering the chroma from the luma
@@ -216,7 +216,7 @@ public class NTSCRenderer extends Renderer {
 		return line;
 	}
 
-	public final float[] ntsc_encode(final int[] nescolors, final int offset, final int scanline, final int bgcolor) {
+	public float[] ntsc_encode(int[] nescolors, int offset, int scanline, int bgcolor) {
 		// part one of the process. creates a 2728 pxl array of floats
 		// representing
 		// ntsc version of scanline passed to it. Meant to be called 240x a
@@ -245,15 +245,15 @@ public class NTSCRenderer extends Renderer {
 		// but then i'm going to chop off before dot 240 and after 2656 b/c it's
 		// not used
 		// so after this comment, add 240 to any num. in this for dot #
-		final float[] sample = new float[2728 - 240];
+		float[] sample = new float[2728 - 240];
 		for (i = 400 - 240; i < 520 - 240; ++i) { // bg color at beginning
-			final int phase = (i + offset) % 12;
-			final int hue = colorphases[col][phase];
+			int phase = (i + offset) % 12;
+			int hue = colorphases[col][phase];
 			sample[i] = lumas[hue][lum][coloremph[emphasis][phase]];
 		}
 		for (i = 2568 - 240; i < 2656 - 240; ++i) { // bg color at end of line
-			final int phase = (i + offset) % 12;
-			final int hue = colorphases[col][phase];
+			int phase = (i + offset) % 12;
+			int hue = colorphases[col][phase];
 			sample[i] = lumas[hue][lum][coloremph[emphasis][phase]];
 		}
 		for (i = 520 - 240; i < 2568 - 240; ++i) { // picture
@@ -266,8 +266,8 @@ public class NTSCRenderer extends Renderer {
 				emphasis = (col >> 6);
 				col &= 0xf;
 			}
-			final int phase = (i + offset) % 12;
-			final int hue = colorphases[col][phase];
+			int phase = (i + offset) % 12;
+			int hue = colorphases[col][phase];
 			sample[i] = lumas[hue][lum][coloremph[emphasis][phase]];
 		}
 		sample[2728 - 241] = offset; // hack to not have to deal with a tuple
@@ -275,7 +275,7 @@ public class NTSCRenderer extends Renderer {
 	}
 
 	@Override
-	public BufferedImage render(final int[] nespixels, final int[] bgcolors, final boolean dotcrawl) {
+	public BufferedImage render(int[] nespixels, int[] bgcolors, boolean dotcrawl) {
 		// multithreaded filter
 		lines.parallelStream().forEach(line -> cacheRender(nespixels, line, bgcolors, dotcrawl));
 

@@ -1,15 +1,15 @@
 package jnesulator.core.nes.ui;
 
-import static jnesulator.core.nes.utils.BIT0;
-import static jnesulator.core.nes.utils.BIT1;
-import static jnesulator.core.nes.utils.BIT2;
-import static jnesulator.core.nes.utils.BIT3;
-import static jnesulator.core.nes.utils.BIT4;
-import static jnesulator.core.nes.utils.BIT5;
-import static jnesulator.core.nes.utils.BIT6;
-import static jnesulator.core.nes.utils.BIT7;
+import static jnesulator.core.nes.Utils.BIT0;
+import static jnesulator.core.nes.Utils.BIT1;
+import static jnesulator.core.nes.Utils.BIT2;
+import static jnesulator.core.nes.Utils.BIT3;
+import static jnesulator.core.nes.Utils.BIT4;
+import static jnesulator.core.nes.Utils.BIT5;
+import static jnesulator.core.nes.Utils.BIT6;
+import static jnesulator.core.nes.Utils.BIT7;
 
-public class PuppetController implements ControllerInterface {
+public class PuppetController implements IController {
 	public enum Button {
 		UP, DOWN, LEFT, RIGHT, A, B, SELECT, START
 	}

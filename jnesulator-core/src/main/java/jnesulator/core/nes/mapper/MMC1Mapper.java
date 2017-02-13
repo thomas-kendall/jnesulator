@@ -1,10 +1,13 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class MMC1Mapper extends Mapper {
+public class MMC1Mapper extends BaseMapper {
 
 	private int mmc1shift = 0;
+
 	private int mmc1latch = 0;
 	private int mmc1ctrl = 0xc;
 	private int mmc1chr0 = 0;
@@ -14,24 +17,28 @@ public class MMC1Mapper extends Mapper {
 	private double cpucycleprev = 0; // for Bill and Ted fix
 	private long framecountprev = 0;
 
+	public MMC1Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
 		}
-		if (cpu.clocks == cpucycleprev && cpuram.apu.nes.framecount == framecountprev) {
+		if (getNES().getCPU().clocks == cpucycleprev && getNES().framecount == framecountprev) {
 			return; // bill and ted fix - prevents 2 writes too close together
 			// from being acknowledged
 			// if I ever go to a cycle based core instead of opcode based this
 			// needs to change.
 		}
-		framecountprev = cpuram.apu.nes.framecount;
+		framecountprev = getNES().framecount;
 		// and this is extremely ugly/likely to break
 		// but is needed to prevent the Bill+Ted fix from breaking Dr Mario
 		// intro.
-		cpucycleprev = cpu.clocks;
-		if (((data & (utils.BIT7)) != 0)) {
+		cpucycleprev = getNES().getCPU().clocks;
+		if (((data & (Utils.BIT7)) != 0)) {
 			// reset shift register
 			mmc1shift = 0;
 			mmc1latch = 0;
@@ -74,7 +81,7 @@ public class MMC1Mapper extends Mapper {
 					// 1st and last
 					// 256k of the PRG ROM
 					mmc1chr0 &= 0xf;
-					soromlatch = ((mmc1shift & (utils.BIT4)) != 0);
+					soromlatch = ((mmc1shift & (Utils.BIT4)) != 0);
 				}
 			} else if (addr >= 0xc000 && addr <= 0xdfff) {
 				// mmc1chr1
@@ -96,9 +103,8 @@ public class MMC1Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 0; i < 32; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
 		}
@@ -110,7 +116,7 @@ public class MMC1Mapper extends Mapper {
 
 	private void setbanks() {
 		// chr bank 0
-		if (((mmc1ctrl & (utils.BIT4)) != 0)) {
+		if (((mmc1ctrl & (Utils.BIT4)) != 0)) {
 			// 4k bank mode
 			for (int i = 0; i < 4; ++i) {
 				chr_map[i] = (1024 * (i + 4 * mmc1chr0)) % chrsize;
@@ -126,14 +132,14 @@ public class MMC1Mapper extends Mapper {
 		}
 
 		// prg bank
-		if (!((mmc1ctrl & (utils.BIT3)) != 0)) {
+		if (!((mmc1ctrl & (Utils.BIT3)) != 0)) {
 			// 32k switch
 			// ignore low bank bit
 			for (int i = 0; i < 32; ++i) {
 				prg_map[i] = (1024 * i + 32768 * (mmc1prg >> 1)) % prgsize;
 			}
 
-		} else if (!((mmc1ctrl & (utils.BIT2)) != 0)) {
+		} else if (!((mmc1ctrl & (Utils.BIT2)) != 0)) {
 			// fix 1st bank, 16k switch 2nd bank
 			for (int i = 0; i < 16; ++i) {
 				prg_map[i] = (1024 * i);

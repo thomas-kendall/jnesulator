@@ -1,12 +1,19 @@
 package jnesulator.core.nes.mapper;
 
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+
 //CNROM with copy protection
-public class Mapper185 extends Mapper {
+public class Mapper185 extends BaseMapper {
 
 	boolean chr_enabled = true;
 
+	public Mapper185(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -20,9 +27,8 @@ public class Mapper185 extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
 		}

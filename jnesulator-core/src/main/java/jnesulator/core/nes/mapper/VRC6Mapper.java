@@ -1,9 +1,11 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 import jnesulator.core.nes.audio.VRC6SoundChip;
 
-public class VRC6Mapper extends Mapper {
+public class VRC6Mapper extends BaseMapper {
 
 	int[][] registerselectbits = { { 0, 1 }, { 1, 0 } };
 	int[] registers;
@@ -16,8 +18,8 @@ public class VRC6Mapper extends Mapper {
 
 	int prescaler = 341;
 
-	public VRC6Mapper(int mappernum) {
-		super();
+	public VRC6Mapper(NES nes, int mappernum) {
+		super(nes);
 		sndchip = new VRC6SoundChip();
 
 		switch (mappernum) {
@@ -35,14 +37,14 @@ public class VRC6Mapper extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
 		}
 
-		final boolean bit0 = ((addr & (1 << registers[0])) != 0);
-		final boolean bit1 = ((addr & (1 << registers[1])) != 0);
+		boolean bit0 = ((addr & (1 << registers[0])) != 0);
+		boolean bit1 = ((addr & (1 << registers[1])) != 0);
 		switch (addr >> 12) {
 		case 0x8:
 			// 8000-8003: prg bank 0 select
@@ -64,16 +66,16 @@ public class VRC6Mapper extends Mapper {
 				// mirroring select
 				switch ((data >> 2) & 3) {
 				case 0:
-					setmirroring(Mapper.MirrorType.V_MIRROR);
+					setmirroring(MirrorType.V_MIRROR);
 					break;
 				case 1:
-					setmirroring(Mapper.MirrorType.H_MIRROR);
+					setmirroring(MirrorType.H_MIRROR);
 					break;
 				case 2:
-					setmirroring(Mapper.MirrorType.SS_MIRROR0);
+					setmirroring(MirrorType.SS_MIRROR0);
 					break;
 				case 3:
-					setmirroring(Mapper.MirrorType.SS_MIRROR1);
+					setmirroring(MirrorType.SS_MIRROR1);
 					break;
 				}
 			} else {
@@ -96,15 +98,15 @@ public class VRC6Mapper extends Mapper {
 				if (!bit0) {
 					irqreload = data;
 				} else {
-					irqack = ((data & (utils.BIT0)) != 0);
-					irqenable = ((data & (utils.BIT1)) != 0);
-					irqmode = ((data & (utils.BIT2)) != 0);
+					irqack = ((data & (Utils.BIT0)) != 0);
+					irqenable = ((data & (Utils.BIT1)) != 0);
+					irqmode = ((data & (Utils.BIT2)) != 0);
 					if (irqenable) {
 						irqcounter = irqreload;
 						prescaler = 341;
 					}
 					if (firedinterrupt) {
-						--cpu.interrupt;
+						--getNES().getCPU().interrupt;
 					}
 					firedinterrupt = false;
 				}
@@ -112,7 +114,7 @@ public class VRC6Mapper extends Mapper {
 				if (!bit0) {
 					irqenable = irqack;
 					if (firedinterrupt) {
-						--cpu.interrupt;
+						--getNES().getCPU().interrupt;
 					}
 					firedinterrupt = false;
 				}
@@ -138,9 +140,8 @@ public class VRC6Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		super.loadrom();
-		// needs to be in every mapper. Fill with initial cfg
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			// map last banks in to start off
 			prg_map[32 - i] = prgsize - (1024 * i);
@@ -155,7 +156,7 @@ public class VRC6Mapper extends Mapper {
 			// tiny hack, because the APU is not initialized until AFTER this
 			// happens
 			// TODO: this really should not need to be here.
-			cpuram.apu.addExpnSound(sndchip);
+			getNES().getAPU().addExpnSound(sndchip);
 			hasInitSound = true;
 		}
 		if (irqenable) {
@@ -164,7 +165,7 @@ public class VRC6Mapper extends Mapper {
 				// System.err.println("Interrupt @ Scanline " + scanline + "
 				// reload " + irqreload);
 				if (!firedinterrupt) {
-					++cpu.interrupt;
+					++getNES().getCPU().interrupt;
 				}
 				firedinterrupt = true;
 			} else {
@@ -194,7 +195,7 @@ public class VRC6Mapper extends Mapper {
 		}
 	}
 
-	private void setppubank(final int banksize, final int bankpos, final int banknum) {
+	private void setppubank(int banksize, int bankpos, int banknum) {
 		// System.err.println(banksize + ", " + bankpos + ", "+ banknum);
 		for (int i = 0; i < banksize; ++i) {
 			chr_map[i + bankpos] = (1024 * ((banknum) + i)) % chrsize;

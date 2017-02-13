@@ -6,10 +6,10 @@ package jnesulator.core.nes.cheats;
  */
 public class Patch {
 
-	private final int type; // 0 = no compare read, 1 = do
-	private final int address;
-	private final int data;
-	private final int cmpData;
+	private int type; // 0 = no compare read, 1 = do
+	private int address;
+	private int data;
+	private int cmpData;
 
 	/**
 	 * Creates a patch.
@@ -41,7 +41,7 @@ public class Patch {
 		if (getClass() != obj.getClass()) {
 			return false;
 		}
-		final Patch other = (Patch) obj;
+		Patch other = (Patch) obj;
 		if (this.address != other.address) {
 			return false;
 		}

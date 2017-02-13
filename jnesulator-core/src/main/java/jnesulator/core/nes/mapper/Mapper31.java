@@ -1,16 +1,23 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Mapper31 extends Mapper {
+public class Mapper31 extends BaseMapper {
 
 	// mapper for NSF compilations, based on BNROM with NSF type bankswitch
 	// written in about 20mins so i could listen to 2a03puritans
 	public boolean nsfBanking;
+
 	public int[] nsfBanks = { 00, 00, 00, 00, 00, 00, 00, 0xff };
 
+	public Mapper31(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		// by default has wram at 0x6000 and cartridge at 0x8000-0xfff
 		// but some mappers have different so override for those
 		if (addr >= 0x8000) {
@@ -23,12 +30,12 @@ public class Mapper31 extends Mapper {
 		} else if ((addr >= 0x5000)) {
 			return nsfBanks[addr & 7];
 		}
-		System.err.println("reading open bus " + utils.hex(addr));
+		System.err.println("reading open bus " + Utils.hex(addr));
 		return addr >> 8; // open bus
 	}
 
 	@Override
-	public void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr >= 0x6000 && addr < 0x8000) {
 			// default no-mapper operation just writes if in PRG RAM range
 			prgram[addr & 0x1fff] = data;
@@ -37,14 +44,13 @@ public class Mapper31 extends Mapper {
 			// System.err.println(addr - 0x5ff8 + " " + data);
 			setBanks();
 		} else {
-			System.err.println("write to " + utils.hex(addr) + " goes nowhere");
+			System.err.println("write to " + Utils.hex(addr) + " goes nowhere");
 		}
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		setBanks();
 	}
 

@@ -1,14 +1,21 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class VRC3Mapper extends Mapper {
+public class VRC3Mapper extends BaseMapper {
 
 	private int irqctr, irqreload = 0;
+
 	private boolean irqmode, irqenable, irqackenable, interrupted = false;
 
+	public VRC3Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -28,10 +35,10 @@ public class VRC3Mapper extends Mapper {
 			irqreload = (irqreload & 0x0FFF) | (data & 0xF) << 12;
 			break;
 		case 0xC: // IRQ Control
-			irqmode = ((data & (utils.BIT2)) != 0);
-			irqackenable = ((data & (utils.BIT0)) != 0);
+			irqmode = ((data & (Utils.BIT2)) != 0);
+			irqackenable = ((data & (Utils.BIT0)) != 0);
 
-			irqenable = ((data & (utils.BIT1)) != 0);
+			irqenable = ((data & (Utils.BIT1)) != 0);
 			if (irqenable) {
 				if (irqmode) {
 					irqctr &= 0xFF00;
@@ -41,7 +48,7 @@ public class VRC3Mapper extends Mapper {
 				}
 
 				if (interrupted) {
-					--cpu.interrupt;
+					--getNES().getCPU().interrupt;
 					interrupted = false;
 				}
 			}
@@ -49,7 +56,7 @@ public class VRC3Mapper extends Mapper {
 		case 0xD: // IRQ Acknowledge
 			irqenable = irqackenable;
 			if (interrupted) {
-				--cpu.interrupt;
+				--getNES().getCPU().interrupt;
 				interrupted = false;
 			}
 			break;
@@ -62,7 +69,7 @@ public class VRC3Mapper extends Mapper {
 	}
 
 	@Override
-	public void cpucycle(final int cycles) {
+	public void cpucycle(int cycles) {
 		if (irqenable) {
 			if (irqmode) { // 8-bit mode
 				int temp = irqctr;
@@ -71,7 +78,7 @@ public class VRC3Mapper extends Mapper {
 					irqctr = irqreload;
 					irqctr |= (irqreload & 0xFF);
 					if (!interrupted) {
-						++cpu.interrupt;
+						++getNES().getCPU().interrupt;
 						interrupted = true;
 					}
 				} else {
@@ -82,7 +89,7 @@ public class VRC3Mapper extends Mapper {
 				if (irqctr >= 0xFFFF) {
 					irqctr = irqreload;
 					if (!interrupted) {
-						++cpu.interrupt;
+						++getNES().getCPU().interrupt;
 						interrupted = true;
 					}
 				} else {
@@ -93,9 +100,8 @@ public class VRC3Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// swappable bank
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);

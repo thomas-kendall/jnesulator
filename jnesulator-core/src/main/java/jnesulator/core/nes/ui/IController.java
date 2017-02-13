@@ -1,10 +1,10 @@
 package jnesulator.core.nes.ui;
 
-public interface ControllerInterface {
+public interface IController {
 
 	int getbyte();
 
-	void output(final boolean state);
+	void output(boolean state);
 
 	int peekOutput();
 

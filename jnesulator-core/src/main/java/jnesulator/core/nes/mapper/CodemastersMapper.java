@@ -1,13 +1,19 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class CodemastersMapper extends Mapper {
+public class CodemastersMapper extends BaseMapper {
 
 	private int bank = 0x0;
 
+	public CodemastersMapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -16,7 +22,7 @@ public class CodemastersMapper extends Mapper {
 			if (crc == 0x1BC686A8L) {
 				// fire hawk is only game with mapper controlled mirroring
 				// micro machines glitches hard if this is on
-				setmirroring((((data & (utils.BIT4)) != 0) ? MirrorType.SS_MIRROR1 : MirrorType.SS_MIRROR0));
+				setmirroring((((data & (Utils.BIT4)) != 0) ? MirrorType.SS_MIRROR1 : MirrorType.SS_MIRROR0));
 			}
 		} else {
 			bank = data & 0xf;
@@ -29,9 +35,9 @@ public class CodemastersMapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
+	public void loadrom(ROMLoader loader) throws BadMapperException {
 		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+		super.loadrom(loader);
 		// movable bank, should really be random. eh, effort
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);

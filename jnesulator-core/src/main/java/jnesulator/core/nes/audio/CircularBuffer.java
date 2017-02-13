@@ -39,13 +39,13 @@ public class CircularBuffer {
 	}
 
 	public int read() {
-		final int retval = buffer[read_ptr];
+		int retval = buffer[read_ptr];
 		++read_ptr;
 		read_ptr &= (bufsize - 1);
 		return retval;
 	}
 
-	public void write(final int data) {
+	public void write(int data) {
 		buffer[write_ptr] = data;
 		++write_ptr;
 		write_ptr &= (bufsize - 1);

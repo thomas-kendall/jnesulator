@@ -1,16 +1,23 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class AfterburnerMapper extends Mapper {
+public class AfterburnerMapper extends BaseMapper {
 	// the Afterburner mapper is special in that it uses ROM name tables
 
 	private int bank = 0x0;
+
 	boolean useromnt = false;
 	int romnt1, romnt2;
 
+	public AfterburnerMapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -27,8 +34,8 @@ public class AfterburnerMapper extends Mapper {
 		} else if (addr <= 0xdfff) {
 			romnt2 = data | 0x80;
 		} else if (addr <= 0xefff) {
-			useromnt = ((data & (utils.BIT4)) != 0);
-			setmirroring(((data & (utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+			useromnt = ((data & (Utils.BIT4)) != 0);
+			setmirroring(((data & (Utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 		} else if (addr <= 0xffff) {
 			bank = data & 0xf;
 			// remap PRG bank (1st bank switchable, 2nd bank mapped to LAST
@@ -40,9 +47,9 @@ public class AfterburnerMapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
+	public void loadrom(ROMLoader loader) throws BadMapperException {
 		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+		super.loadrom(loader);
 		// movable bank, should really be random. eh, effort
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
@@ -75,7 +82,7 @@ public class AfterburnerMapper extends Mapper {
 					if (addr >= 0x10 && ((addr & 3) == 0)) {
 						addr -= 0x10;
 					}
-					return ppu.pal[addr];
+					return getNES().getPPU().pal[addr];
 				} else {
 					return (useromnt ? chr[(addr & 0x3ff) + (romnt1 * 1024)] : nt3[addr & 0x3ff]);
 				}

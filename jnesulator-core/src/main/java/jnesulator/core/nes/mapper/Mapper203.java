@@ -1,14 +1,21 @@
 package jnesulator.core.nes.mapper;
 
-public class Mapper203 extends Mapper {
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+
+public class Mapper203 extends BaseMapper {
+
+	public Mapper203(NES nes) {
+		super(nes);
+	}
 
 	@Override
-	public int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		return prg[prg_map[((addr & 0x3fff)) >> 10] + ((addr & 0x3fff) & 1023)];
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -27,9 +34,8 @@ public class Mapper203 extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
 		}

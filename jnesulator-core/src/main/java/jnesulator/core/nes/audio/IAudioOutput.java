@@ -1,6 +1,6 @@
 package jnesulator.core.nes.audio;
 
-public interface AudioOutInterface {
+public interface IAudioOutput {
 
 	boolean bufferHasLessThan(int samples);
 

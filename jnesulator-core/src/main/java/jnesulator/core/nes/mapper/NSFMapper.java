@@ -2,10 +2,9 @@ package jnesulator.core.nes.mapper;
 
 import java.util.Arrays;
 
-import jnesulator.core.nes.CPU;
-import jnesulator.core.nes.CPURAM;
-import jnesulator.core.nes.PPU;
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 import jnesulator.core.nes.audio.FDSSoundChip;
 import jnesulator.core.nes.audio.MMC5SoundChip;
 import jnesulator.core.nes.audio.Namco163SoundChip;
@@ -13,11 +12,12 @@ import jnesulator.core.nes.audio.Sunsoft5BSoundChip;
 import jnesulator.core.nes.audio.VRC6SoundChip;
 import jnesulator.core.nes.audio.VRC7SoundChip;
 
-public class NSFMapper extends Mapper {
+public class NSFMapper extends BaseMapper {
 	// a nsf playing mapper
 	// TODO: add the extra bankswitches required when playing FDS
 
-	private static final String trackstr = "Track --- / ---          <-B A->";
+	private static String trackstr = "Track --- / ---          <-B A->";
+
 	private int load, init, play, song, numSongs;
 	public boolean nsfBanking;
 	public int[] nsfStartBanks = new int[10], nsfBanks = new int[10];
@@ -34,15 +34,20 @@ public class NSFMapper extends Mapper {
 	private Sunsoft5BSoundChip s5bAudio;
 	private MMC5SoundChip mmc5Audio;
 	private FDSSoundChip fdsAudio;
-
 	int control, prevcontrol;
 
 	int unfinishedcounter = 0;
 
 	int time = 4;
 
+	private ROMLoader loader;
+
+	public NSFMapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		// by default has wram at 0x6000 and cartridge at 0x8000-0xfff
 		// but some mappers have different so override for those
 		if (addr >= 0x8000) {
@@ -94,15 +99,15 @@ public class NSFMapper extends Mapper {
 		} else if (fds && (addr >= 0x4040) && (addr < 0x4093)) {
 			return fdsAudio.read(addr);
 		}
-		System.err.println("reading open bus " + utils.hex(addr));
+		System.err.println("reading open bus " + Utils.hex(addr));
 		return addr >> 8; // open bus
 	}
 
 	// write into the cartridge's address space
 	@Override
-	public void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (n163 && addr == 0xF800) {
-			n163autoincrement = ((data & (utils.BIT7)) != 0);
+			n163autoincrement = ((data & (Utils.BIT7)) != 0);
 			n163soundAddr = data & 0x7f;
 		} else if (n163 && addr == 0x4800) {
 			n163Audio.write(n163soundAddr, data);
@@ -164,7 +169,7 @@ public class NSFMapper extends Mapper {
 		} else if (fds && (addr >= 0x4040) && (addr <= 0x4092)) {
 			fdsAudio.write(addr, data);
 		} else {
-			System.err.println("write to " + utils.hex(addr) + " goes nowhere");
+			System.err.println("write to " + Utils.hex(addr) + " goes nowhere");
 		}
 	}
 
@@ -193,11 +198,10 @@ public class NSFMapper extends Mapper {
 
 	@Override
 	public String getrominfo() {
-		return "NSF INFO: \n" + "Filename:     " + loader.name + "\n" + "Size:     " + loader.romlen() / 1024 + " K\n"
-				+ "Expansion Sound:  " + expSound() + "\n" + "Track: " + (song + 1) + " / " + (numSongs + 1) + "\n"
-				+ "Load Address:  " + utils.hex(load) + "\n" + "Init Address:  " + utils.hex(init) + "\n"
-				+ "Play Address:  " + utils.hex(play) + "\n" + "Banking?      " + (nsfBanking ? "Yes" : "No") + "\n"
-				+ "CRC:          " + utils.hex(this.crc);
+		return "NSF INFO: \n" + "Expansion Sound:  " + expSound() + "\n" + "Track: " + (song + 1) + " / "
+				+ (numSongs + 1) + "\n" + "Load Address:  " + Utils.hex(load) + "\n" + "Init Address:  "
+				+ Utils.hex(init) + "\n" + "Play Address:  " + Utils.hex(play) + "\n" + "Banking?      "
+				+ (nsfBanking ? "Yes" : "No") + "\n" + "CRC:          " + Utils.hex(this.crc);
 	}
 
 	@Override
@@ -210,26 +214,26 @@ public class NSFMapper extends Mapper {
 		setBanks();
 		// clear all ram to 0
 		for (int i = 0; i <= 0x7ff; ++i) {
-			cpuram.write(i, 0);
+			getNES().getCPURAM().write(i, 0);
 		}
 		// initialize sound registers
 		for (int i = 0x4000; i <= 0x4013; ++i) {
-			cpuram.write(i, 0);
+			getNES().getCPURAM().write(i, 0);
 		}
-		cpuram.write(0x4015, 0x0f);
+		getNES().getCPURAM().write(0x4015, 0x0f);
 		// disable frame counter on APU
-		cpuram.write(0x4017, 0x40);
+		getNES().getCPURAM().write(0x4017, 0x40);
 		// simulate a jump to the play address
-		cpu.push(0xff);
-		cpu.push(0xfa);
+		getNES().getCPU().push(0xff);
+		getNES().getCPU().push(0xfa);
 
-		cpu.setPC(init);
-		cpu.interrupt = -99999; // no interrupts for you
-		cpu.setRegA(song);
+		getNES().getCPU().setPC(init);
+		getNES().getCPU().interrupt = -99999; // no interrupts for you
+		getNES().getCPU().setRegA(song);
 		if (this.region == TVType.PAL) {
-			cpu.setRegX(0x01);
+			getNES().getCPU().setRegX(0x01);
 		} else {
-			cpu.setRegX(0x00);
+			getNES().getCPU().setRegX(0x00);
 		}
 
 		// copy titles to ppu nametable
@@ -251,13 +255,14 @@ public class NSFMapper extends Mapper {
 		}
 		if (!fds) { // DON'T CLEAR THIS WHEN STUFF LOADS HERE
 			for (int i = 0x6000; i <= 0x7fff; ++i) {
-				cpuram.write(i, 0);
+				getNES().getCPURAM().write(i, 0);
 			}
 		}
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		this.loader = loader;
 		loader.parseHeader();
 		prgsize = loader.prgsize;
 		mappertype = loader.mappertype;
@@ -299,11 +304,11 @@ public class NSFMapper extends Mapper {
 		int paddingLen = (nsfBanking) ? load & 0x0fff : load - 0x8000;
 		prg = new int[1024 * 1024];
 		System.arraycopy(loader.load(loader.romlen(), prgoff), 0, prg, paddingLen, loader.romlen());
-		crc = crc32(prg);
+		crc = CyclicRedundancyCheck.crc32(prg);
 		haschrram = true;
 		chrsize = 8192;
 		chr = new int[8192];
-		prg_map = new int[(((sndchip & (utils.BIT2)) != 0)) ? 40 : 32];
+		prg_map = new int[(((sndchip & (Utils.BIT2)) != 0)) ? 40 : 32];
 		if (!nsfBanking) {
 			// identity mapping from 1st loaded bank
 			for (int i = 0; i < 8; ++i) {
@@ -312,7 +317,7 @@ public class NSFMapper extends Mapper {
 
 		}
 		// additional headache for NSFs with FDS:
-		if (((sndchip & (utils.BIT2)) != 0)) {
+		if (((sndchip & (Utils.BIT2)) != 0)) {
 			// got to copy some stuff into 6000 - 7fff just because
 			nsfStartBanks[8] = nsfStartBanks[6];
 			nsfStartBanks[9] = nsfStartBanks[7];
@@ -322,28 +327,28 @@ public class NSFMapper extends Mapper {
 		for (int i = 0; i < 8; ++i) {
 			chr_map[i] = (1024 * i) & (chrsize - 1);
 		}
-		cpuram = new CPURAM(this);
-		cpu = new CPU(cpuram);
-		ppu = new PPU(this);
+		getNES().getCPURAM().reset();
+		getNES().getCPU().reset();
+		getNES().getPPU().reset();
 		Arrays.fill(pput0, 0x00);
 		setmirroring(scrolltype);
 		// System.out.println(sndchip);
 
 		// set up the PPU to display titles
 		// pick a random color based on the tune's crc (why not?)
-		ppu.pal[0] = 0x3f;
-		ppu.pal[1] = 0x20 + (int) (crc % 12);
-		ppu.pal[2] = 0x20 + (int) (crc % 12);
-		ppu.pal[3] = 0x20 + (int) (crc % 12);
+		getNES().getPPU().pal[0] = 0x3f;
+		getNES().getPPU().pal[1] = 0x20 + (int) (crc % 12);
+		getNES().getPPU().pal[2] = 0x20 + (int) (crc % 12);
+		getNES().getPPU().pal[3] = 0x20 + (int) (crc % 12);
 
 		chr = NSFPlayerFont.font;
 	}
 
 	@Override
-	public void notifyscanline(final int scanline) {
+	public void notifyscanline(int scanline) {
 		if (scanline == 240) {
 			// make sure init isn't still running
-			if (cpu.PC != 0xFFFB) {
+			if (getNES().getCPU().PC != 0xFFFB) {
 				// if not in idle loop
 				if (unfinishedcounter < time) {
 					++unfinishedcounter;
@@ -361,11 +366,11 @@ public class NSFMapper extends Mapper {
 				unfinishedcounter = 0;
 			}
 			// set PPU registers to enable rendering
-			ppu.write(6, 0);
-			ppu.write(6, 0);
-			ppu.write(5, 0);
-			ppu.write(0, 0);
-			ppu.write(1, utils.BIT1 | utils.BIT3 | utils.BIT4);
+			getNES().getPPU().write(6, 0);
+			getNES().getPPU().write(6, 0);
+			getNES().getPPU().write(5, 0);
+			getNES().getPPU().write(0, 0);
+			getNES().getPPU().write(1, Utils.BIT1 | Utils.BIT3 | Utils.BIT4);
 
 			// write track number to screen
 			writeTracks();
@@ -375,11 +380,11 @@ public class NSFMapper extends Mapper {
 			prevcontrol = control;
 			control = 0;
 			// strobe
-			cpuram.write(0x4016, 1);
-			cpuram.write(0x4016, 0);
+			getNES().getCPURAM().write(0x4016, 1);
+			getNES().getCPURAM().write(0x4016, 0);
 			// read each button out
 			for (int i = 0; i < 8; ++i) {
-				control = (control << 1) + (((cpuram.read(0x4016) & 3) != 0) ? 1 : 0);
+				control = (control << 1) + (((getNES().getCPURAM().read(0x4016) & 3) != 0) ? 1 : 0);
 			}
 			// change song number if we get a button press
 			if (((control & 0x80) != 0) && ((prevcontrol & 0x80) == 0)) {
@@ -399,22 +404,22 @@ public class NSFMapper extends Mapper {
 			} else // fake a jsr to the play address from wherever
 			// unless this is a supernsf
 			if (unfinishedcounter <= time) {
-				cpu.push((cpu.PC - 1) >> 8);
-				cpu.push((cpu.PC - 1) & 0xff);
-				cpu.setPC(play);
+				getNES().getCPU().push((getNES().getCPU().PC - 1) >> 8);
+				getNES().getCPU().push((getNES().getCPU().PC - 1) & 0xff);
+				getNES().getCPU().setPC(play);
 			}
 		}
 	}
 
 	@Override
-	public void ppuWrite(int addr, final int data) {
+	public void ppuWrite(int addr, int data) {
 	}
 
 	@Override
 	public void reset() {
 		song = loader.header[7] - 1;
 		init();
-		cpu.setPC(init);
+		getNES().getCPU().setPC(init);
 	}
 
 	private void setBanks() {
@@ -437,41 +442,41 @@ public class NSFMapper extends Mapper {
 	}
 
 	private void setSoundChip() {
-		if (((sndchip & (utils.BIT0)) != 0)) {
+		if (((sndchip & (Utils.BIT0)) != 0)) {
 			// VRC6 audio
 			vrc6 = true;
 			vrc6Audio = new VRC6SoundChip();
-			cpuram.apu.addExpnSound(vrc6Audio);
+			getNES().getAPU().addExpnSound(vrc6Audio);
 		}
-		if (((sndchip & (utils.BIT1)) != 0)) {
+		if (((sndchip & (Utils.BIT1)) != 0)) {
 			// VRC7 audio
 			vrc7 = true;
 			vrc7Audio = new VRC7SoundChip();
-			cpuram.apu.addExpnSound(vrc7Audio);
+			getNES().getAPU().addExpnSound(vrc7Audio);
 		}
-		if (((sndchip & (utils.BIT2)) != 0)) {
+		if (((sndchip & (Utils.BIT2)) != 0)) {
 			// FDS audio, not yet implemented
 			fds = true;
 			fdsAudio = new FDSSoundChip();
-			cpuram.apu.addExpnSound(fdsAudio);
+			getNES().getAPU().addExpnSound(fdsAudio);
 		}
-		if (((sndchip & (utils.BIT3)) != 0)) {
+		if (((sndchip & (Utils.BIT3)) != 0)) {
 			// MMC5 audio
 			mmc5 = true;
 			mmc5Audio = new MMC5SoundChip();
-			cpuram.apu.addExpnSound(mmc5Audio);
+			getNES().getAPU().addExpnSound(mmc5Audio);
 		}
-		if (((sndchip & (utils.BIT4)) != 0)) {
+		if (((sndchip & (Utils.BIT4)) != 0)) {
 			// Namco 163 audio
 			n163 = true;
 			n163Audio = new Namco163SoundChip();
-			cpuram.apu.addExpnSound(n163Audio);
+			getNES().getAPU().addExpnSound(n163Audio);
 		}
-		if (((sndchip & (utils.BIT5)) != 0)) {
+		if (((sndchip & (Utils.BIT5)) != 0)) {
 			// Sunsoft 5B audio
 			s5b = true;
 			s5bAudio = new Sunsoft5BSoundChip();
-			cpuram.apu.addExpnSound(s5bAudio);
+			getNES().getAPU().addExpnSound(s5bAudio);
 		}
 	}
 

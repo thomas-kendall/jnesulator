@@ -7,8 +7,6 @@ import java.awt.image.BufferedImage;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-import jnesulator.core.nes.NES;
-
 public class DebugUI extends JFrame {
 	// StrokeInformer aStrokeInformer = new StrokeInformer();
 
@@ -33,7 +31,7 @@ public class DebugUI extends JFrame {
 		}
 
 		@Override
-		public void paint(final Graphics g) {
+		public void paint(Graphics g) {
 			g.drawImage(nextFrame, 0, 0, xsize, ysize, null);
 		}
 	}
@@ -56,7 +54,7 @@ public class DebugUI extends JFrame {
 	}
 
 	public void run() {
-		this.setTitle("jnesulator Debug " + NES.VERSION);
+		this.setTitle("jnesulator Debug");
 		this.setResizable(false);
 		this.setDefaultCloseOperation(HIDE_ON_CLOSE);
 		this.setContentPane(fbuf);

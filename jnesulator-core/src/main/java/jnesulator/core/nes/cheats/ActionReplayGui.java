@@ -10,20 +10,20 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.Utils;
 
 /**
  * Dialog box to configure and apply Pro Action Replay cheat codes.
  */
 public class ActionReplayGui extends javax.swing.JDialog {
 
-	private static final int ADDRESS_LENGTH = 6;
-	private static final int DATA_LENGTH = 2;
-	private static final int CODE_LENGTH = ADDRESS_LENGTH + DATA_LENGTH;
-	private final static String ggMap = "APZLGITYEOXUKSVN";
+	private static int ADDRESS_LENGTH = 6;
+	private static int DATA_LENGTH = 2;
+	private static int CODE_LENGTH = ADDRESS_LENGTH + DATA_LENGTH;
+	private static String ggMap = "APZLGITYEOXUKSVN";
 	private Patch patch = null;
 
-	private final ActionReplay actionReplay;
+	private ActionReplay actionReplay;
 
 	// Variables declaration - do not modify//GEN-BEGIN:variables
 	private javax.swing.JButton btnApply;
@@ -496,28 +496,27 @@ public class ActionReplayGui extends javax.swing.JDialog {
 	}// </editor-fold>//GEN-END:initComponents
 
 	private boolean isCodeValid() {
-		final String code = textCode.getText();
+		String code = textCode.getText();
 		if ((code.length() == 8) && code.matches("[0-9a-fA-F]*")) {
 			btnApply.setEnabled(true);
-			final int data = (Integer.parseInt(textCode.getText().substring(textCode.getText().length() - 2), 16)
-					& 0xFF);
-			final int address = Integer.parseInt(textCode.getText().substring(0, textCode.getText().length() - 2), 16);
+			int data = (Integer.parseInt(textCode.getText().substring(textCode.getText().length() - 2), 16) & 0xFF);
+			int address = Integer.parseInt(textCode.getText().substring(0, textCode.getText().length() - 2), 16);
 			patch = new Patch(address, data);
 			return true;
 		} else if ((code.length() == 6) && code.matches("[AEGIKLNOPSTUVXYZaegiklnopstuvxyz]*")) {
 			// game genie type 1 code
 			long c = GGtoHex(code);
-			if (!((c & (utils.BIT15)) != 0)) { // check bit 15 is false
+			if (!((c & (Utils.BIT15)) != 0)) { // check bit 15 is false
 				// now descramble this value into address and data
-				final int address = 0x8000 | ((int) ((c >> 10) & 1) << 14) | ((int) ((c >> 9) & 1) << 13)
+				int address = 0x8000 | ((int) ((c >> 10) & 1) << 14) | ((int) ((c >> 9) & 1) << 13)
 						| ((int) ((c >> 8) & 1) << 12) | ((int) ((c >> 7) & 1) << 11) | ((int) ((c >> 2) & 1) << 10)
 						| ((int) ((c >> 1) & 1) << 9) | ((int) ((c >> 0) & 1) << 8) | ((int) ((c >> 19) & 1) << 7)
 						| ((int) ((c >> 14) & 1) << 6) | ((int) ((c >> 13) & 1) << 5) | ((int) ((c >> 12) & 1) << 4)
 						| ((int) ((c >> 11) & 1) << 3) | ((int) ((c >> 6) & 1) << 2) | ((int) ((c >> 5) & 1) << 1)
 						| ((int) ((c >> 4) & 1));
-				final int data = ((int) ((c >> 23) & 1) << 7) | ((int) ((c >> 18) & 1) << 6)
-						| ((int) ((c >> 17) & 1) << 5) | ((int) ((c >> 16) & 1) << 4) | ((int) ((c >> 3) & 1) << 3)
-						| ((int) ((c >> 22) & 1) << 2) | ((int) ((c >> 21) & 1) << 1) | (int) ((c >> 20) & 1);
+				int data = ((int) ((c >> 23) & 1) << 7) | ((int) ((c >> 18) & 1) << 6) | ((int) ((c >> 17) & 1) << 5)
+						| ((int) ((c >> 16) & 1) << 4) | ((int) ((c >> 3) & 1) << 3) | ((int) ((c >> 22) & 1) << 2)
+						| ((int) ((c >> 21) & 1) << 1) | (int) ((c >> 20) & 1);
 				btnApply.setEnabled(true);
 				patch = new Patch(address, data);
 				return true;
@@ -528,19 +527,19 @@ public class ActionReplayGui extends javax.swing.JDialog {
 			long c = GGtoHex(code);
 			if (((c & (1 << 23)) != 0)) { // check bit 15 is true
 				// now descramble this value into address and data
-				final int address = 0x8000 | ((int) ((c >> 18) & 1) << 14) | ((int) ((c >> 17) & 1) << 13)
+				int address = 0x8000 | ((int) ((c >> 18) & 1) << 14) | ((int) ((c >> 17) & 1) << 13)
 						| ((int) ((c >> 16) & 1) << 12) | ((int) ((c >> 15) & 1) << 11) | ((int) ((c >> 10) & 1) << 10)
 						| ((int) ((c >> 9) & 1) << 9) | ((int) ((c >> 8) & 1) << 8) | ((int) ((c >> 27) & 1) << 7)
 						| ((int) ((c >> 22) & 1) << 6) | ((int) ((c >> 21) & 1) << 5) | ((int) ((c >> 20) & 1) << 4)
 						| ((int) ((c >> 19) & 1) << 3) | ((int) ((c >> 14) & 1) << 2) | ((int) ((c >> 13) & 1) << 1)
 						| ((int) ((c >> 12) & 1));
-				final int data = ((int) ((c >> 31) & 1) << 7) | ((int) ((c >> 26) & 1) << 6)
-						| ((int) ((c >> 25) & 1) << 5) | ((int) ((c >> 24) & 1) << 4) | ((int) ((c >> 3) & 1) << 3)
-						| ((int) ((c >> 30) & 1) << 2) | ((int) ((c >> 29) & 1) << 1) | ((int) ((c >> 28) & 1));
+				int data = ((int) ((c >> 31) & 1) << 7) | ((int) ((c >> 26) & 1) << 6) | ((int) ((c >> 25) & 1) << 5)
+						| ((int) ((c >> 24) & 1) << 4) | ((int) ((c >> 3) & 1) << 3) | ((int) ((c >> 30) & 1) << 2)
+						| ((int) ((c >> 29) & 1) << 1) | ((int) ((c >> 28) & 1));
 
-				final int check = // 8 char game genie codes use a check byte so
-									// val is only
-									// patched when rom value matches this.
+				int check = // 8 char game genie codes use a check byte so
+							// val is only
+							// patched when rom value matches this.
 						((int) ((c >> 7) & 1) << 7) | ((int) ((c >> 2) & 1) << 6) | ((int) ((c >> 1) & 1) << 5)
 								| ((int) ((c >> 0) & 1) << 4) | ((int) ((c >> 11) & 1) << 3)
 								| ((int) ((c >> 6) & 1) << 2) | ((int) ((c >> 5) & 1) << 1) | ((int) ((c >> 4) & 1));
@@ -569,8 +568,8 @@ public class ActionReplayGui extends javax.swing.JDialog {
 	}// GEN-LAST:event_textFindDataCaretUpdate
 
 	private void updateCurrentCodesList() {
-		final Patch[] patches = actionReplay.getPatches().values().toArray(new Patch[0]);
-		final String[] patchesStr = new String[patches.length];
+		Patch[] patches = actionReplay.getPatches().values().toArray(new Patch[0]);
+		String[] patchesStr = new String[patches.length];
 		for (int i = 0; i < patches.length; i++) {
 			patchesStr[i] = patches[i].toString().toUpperCase();
 		}

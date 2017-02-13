@@ -16,7 +16,7 @@ public enum JInputHelper {
 
 	;
 
-	private static final String[] NATIVE_LIBRARIES = new String[] {
+	private static String[] NATIVE_LIBRARIES = new String[] {
 			// Windows
 			"jinput-dx8.dll", "jinput-dx8_64.dll", "jinput-raw.dll", "jinput-raw_64.dll", "jinput-wintab.dll",
 			"jinput-wintab.dll",
@@ -27,7 +27,7 @@ public enum JInputHelper {
 
 	private static File createTempDirectory() throws IOException {
 
-		String tmpdir = System.getProperty("java.io.tmpdir") + "/jnesulator-" + NES.VERSION;
+		String tmpdir = System.getProperty("java.io.tmpdir") + "/jnesulator";
 		System.err.println(tmpdir);
 		File f = new File(tmpdir);
 		if (!f.exists()) {
@@ -77,10 +77,9 @@ public enum JInputHelper {
 		}
 	}
 
-	private static void setLibraryPath(final File nativesDirectory)
-			throws NoSuchFieldException, IllegalAccessException {
+	private static void setLibraryPath(File nativesDirectory) throws NoSuchFieldException, IllegalAccessException {
 		System.setProperty("java.library.path", nativesDirectory.getAbsolutePath());
-		final Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
+		Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
 		fieldSysPath.setAccessible(true);
 		fieldSysPath.set(null, null);
 	}

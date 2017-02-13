@@ -3,10 +3,10 @@ package jnesulator.core.nes.audio;
 public class SquareTimer extends Timer {
 
 	protected int[] values;
-	final private int periodadd;
+	private int periodadd;
 	private int divider = 0;
 
-	public SquareTimer(final int ctrlen) {
+	public SquareTimer(int ctrlen) {
 		this.periodadd = 0;
 		values = new int[ctrlen];
 		period = 0;
@@ -14,7 +14,7 @@ public class SquareTimer extends Timer {
 		setduty(ctrlen / 2);
 	}
 
-	public SquareTimer(final int ctrlen, final int periodadd) {
+	public SquareTimer(int ctrlen, int periodadd) {
 		this.periodadd = periodadd;
 		values = new int[ctrlen];
 		period = 0;
@@ -23,7 +23,7 @@ public class SquareTimer extends Timer {
 	}
 
 	@Override
-	public final void clock() {
+	public void clock() {
 		if (period + periodadd <= 0) {
 			return;
 		}
@@ -38,7 +38,7 @@ public class SquareTimer extends Timer {
 	}
 
 	@Override
-	public final void clock(final int cycles) {
+	public void clock(int cycles) {
 		if (period < 8) {
 			return;
 		}
@@ -53,29 +53,29 @@ public class SquareTimer extends Timer {
 	}
 
 	@Override
-	public final int getval() {
+	public int getval() {
 		return values[position];
 	}
 
 	@Override
-	public final void reset() {
+	public void reset() {
 		position = 0;
 	}
 
 	@Override
-	public final void setduty(final int duty) {
+	public void setduty(int duty) {
 		for (int i = 0; i < values.length; ++i) {
 			values[i] = (i < duty) ? 1 : 0;
 		}
 	}
 
 	@Override
-	public final void setduty(int[] dutyarray) {
+	public void setduty(int[] dutyarray) {
 		values = dutyarray;
 	}
 
 	@Override
-	public final void setperiod(final int newperiod) {
+	public void setperiod(int newperiod) {
 		period = newperiod;
 	}
 }

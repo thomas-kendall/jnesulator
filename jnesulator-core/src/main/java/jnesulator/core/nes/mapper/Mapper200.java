@@ -1,11 +1,17 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Mapper200 extends Mapper {
+public class Mapper200 extends BaseMapper {
+
+	public Mapper200(NES nes) {
+		super(nes);
+	}
 
 	@Override
-	public int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		// by default has wram at 0x6000 and cartridge at 0x8000-0xfff
 		// but some mappers have different so override for those
 		if (addr < 0x4000) {
@@ -16,7 +22,7 @@ public class Mapper200 extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -24,7 +30,7 @@ public class Mapper200 extends Mapper {
 
 		int reg = addr & 7;
 
-		setmirroring(((data & (utils.BIT3)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+		setmirroring(((data & (Utils.BIT3)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 
 		// remap CHR bank
 		for (int i = 0; i < 8; ++i) {
@@ -37,9 +43,8 @@ public class Mapper200 extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);
 		}

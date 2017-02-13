@@ -1,18 +1,20 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class Sunsoft02Mapper extends Mapper {
+public class Sunsoft02Mapper extends BaseMapper {
 
 	boolean m93;
 
-	public Sunsoft02Mapper(int mappernum) {
-		super();
+	public Sunsoft02Mapper(NES nes, int mappernum) {
+		super(nes);
 		m93 = (mappernum == 93);
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		int prgselect;
 
 		if (addr < 0x8000 || addr > 0xffff) {
@@ -23,7 +25,7 @@ public class Sunsoft02Mapper extends Mapper {
 			prgselect = (data >> 4) & 15;
 		} else {
 			prgselect = (data >> 4) & 7;
-			setmirroring(((data & (utils.BIT3)) != 0) ? MirrorType.SS_MIRROR1 : MirrorType.SS_MIRROR0);
+			setmirroring(((data & (Utils.BIT3)) != 0) ? MirrorType.SS_MIRROR1 : MirrorType.SS_MIRROR0);
 
 			int chrselect = ((data & 7) | (data >> 7) * 8);
 
@@ -40,9 +42,8 @@ public class Sunsoft02Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// swappable bank
 		for (int i = 0; i < 16; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);

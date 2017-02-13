@@ -2,22 +2,22 @@ package jnesulator.core.nes;
 
 import java.util.ArrayList;
 
-import jnesulator.core.nes.audio.AudioOutInterface;
-import jnesulator.core.nes.audio.ExpansionSoundChip;
+import jnesulator.core.nes.audio.IAudioOutput;
+import jnesulator.core.nes.audio.IExpansionSoundChip;
 import jnesulator.core.nes.audio.NoiseTimer;
 import jnesulator.core.nes.audio.SquareTimer;
 import jnesulator.core.nes.audio.SwingAudioImpl;
 import jnesulator.core.nes.audio.Timer;
 import jnesulator.core.nes.audio.TriangleTimer;
-import jnesulator.core.nes.mapper.Mapper;
+import jnesulator.core.nes.mapper.TVType;
 import jnesulator.core.nes.ui.Oscilloscope;
 
 public class APU {
 
-	private final static int[] TNDLOOKUP = initTndLookup(), SQUARELOOKUP = initSquareLookup();
-	private final static int[] lenctrload = { 10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24,
+	private static final int[] TNDLOOKUP = initTndLookup(), SQUARELOOKUP = initSquareLookup();
+	private static final int[] lenctrload = { 10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24,
 			18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30 };
-	final private static int[][] DUTYLOOKUP = { { 0, 1, 0, 0, 0, 0, 0, 0 }, { 0, 1, 1, 0, 0, 0, 0, 0 },
+	private static final int[][] DUTYLOOKUP = { { 0, 1, 0, 0, 0, 0, 0, 0 }, { 0, 1, 1, 0, 0, 0, 0, 0 },
 			{ 0, 1, 1, 1, 1, 0, 0, 0 }, { 1, 0, 0, 1, 1, 1, 1, 1 } };
 
 	private static int[] initSquareLookup() {
@@ -37,19 +37,16 @@ public class APU {
 		return lookup;
 	}
 
+	private NES nes;
 	public int samplerate;
-	private final Timer[] timers = { new SquareTimer(8, 2), new SquareTimer(8, 2), new TriangleTimer(),
-			new NoiseTimer() };
+	private Timer[] timers = { new SquareTimer(8, 2), new SquareTimer(8, 2), new TriangleTimer(), new NoiseTimer() };
 	private double cyclespersample;
-	public final NES nes;
-	CPU cpu;
-	CPURAM cpuram;
 	public int sprdma_count;
 	private int apucycle = 0, remainder = 0;
 	private int[] noiseperiod;
 	// different for PAL
 	private long accum = 0;
-	private final ArrayList<ExpansionSoundChip> expnSound = new ArrayList<>();
+	private ArrayList<IExpansionSoundChip> expnSound = new ArrayList<>();
 	private boolean soundFiltering;
 	private int framectrreload;
 	private int framectrdiv = 7456;
@@ -57,46 +54,41 @@ public class APU {
 	private int lpaccum = 0;
 	private boolean apuintflag = true, statusdmcint = false, statusframeint = false;
 	private int framectr = 0, ctrmode = 4;
-	private final boolean[] lenCtrEnable = { true, true, true, true };
-	private final int[] volume = new int[4];
+	private boolean[] lenCtrEnable = { true, true, true, true };
+	private int[] volume = new int[4];
 	// dmc instance variables
 	private int[] dmcperiods;
 	private int dmcrate = 0x36, dmcpos = 0, dmcshiftregister = 0, dmcbuffer = 0, dmcvalue = 0, dmcsamplelength = 1,
 			dmcsamplesleft = 0, dmcstartaddr = 0xc000, dmcaddr = 0xc000, dmcbitsleft = 8;
 	private boolean dmcsilence = true, dmcirq = false, dmcloop = false, dmcBufferEmpty = true;
 	// length ctr instance variables
-	private final int[] lengthctr = { 0, 0, 0, 0 };
-	private final boolean[] lenctrHalt = { true, true, true, true };
+	private int[] lengthctr = { 0, 0, 0, 0 };
+	private boolean[] lenctrHalt = { true, true, true, true };
 	// linear counter instance vars
 	private int linearctr = 0;
 	private int linctrreload = 0;
 	private boolean linctrflag = false;
 	// instance variables for envelope units
-	private final int[] envelopeValue = { 15, 15, 15, 15 };
-	private final int[] envelopeCounter = { 0, 0, 0, 0 };
-	private final int[] envelopePos = { 0, 0, 0, 0 };
-	private final boolean[] envConstVolume = { true, true, true, true };
-	private final boolean[] envelopeStartFlag = { false, false, false, false };
+	private int[] envelopeValue = { 15, 15, 15, 15 };
+	private int[] envelopeCounter = { 0, 0, 0, 0 };
+	private int[] envelopePos = { 0, 0, 0, 0 };
+	private boolean[] envConstVolume = { true, true, true, true };
+	private boolean[] envelopeStartFlag = { false, false, false, false };
 	// instance variables for sweep unit
-	private final boolean[] sweepenable = { false, false }, sweepnegate = { false, false },
-			sweepsilence = { false, false }, sweepreload = { false, false };
+	private boolean[] sweepenable = { false, false }, sweepnegate = { false, false }, sweepsilence = { false, false },
+			sweepreload = { false, false };
 
-	private final int[] sweepperiod = { 15, 15 }, sweepshift = { 0, 0 }, sweeppos = { 0, 0 };
+	private int[] sweepperiod = { 15, 15 }, sweepshift = { 0, 0 }, sweeppos = { 0, 0 };
 
 	private int cyclesperframe;
 
-	private AudioOutInterface ai;
+	private IAudioOutput ai;
 
-	public APU(final NES nes, final CPU cpu, final CPURAM cpuram) {
-		this.samplerate = 1; // just in case we can't init audio
-		// then init the audio stream
+	public APU(NES nes) {
 		this.nes = nes;
-		this.cpu = cpu;
-		this.cpuram = cpuram;
-		setParameters();
 	}
 
-	public void addExpnSound(ExpansionSoundChip chip) {
+	public void addExpnSound(IExpansionSoundChip chip) {
 		expnSound.add(chip);
 	}
 
@@ -121,7 +113,7 @@ public class APU {
 				}
 			}
 			if (!dmcsilence) {
-				dmcvalue += (((dmcshiftregister & (utils.BIT0)) != 0) ? 2 : -2);
+				dmcvalue += (((dmcshiftregister & (Utils.BIT0)) != 0) ? 2 : -2);
 				// DMC output register doesn't wrap around
 				if (dmcvalue > 0x7f) {
 					dmcvalue = 0x7f;
@@ -137,7 +129,8 @@ public class APU {
 	}
 
 	private void clockframecounter() {
-		// System.err.println("frame ctr clock " + framectr + ' ' + cpu.cycles);
+		// System.err.println("frame ctr clock " + framectr + ' ' +
+		// nes.getCPU().cycles);
 		// should be ~4x a frame, 240 Hz
 		// but the problem is this isn't exactly related to the video signal,
 		// it's a completely separate timer, so the phase can shift in relation
@@ -155,8 +148,9 @@ public class APU {
 			setsweep();
 		}
 		if (!apuintflag && (framectr == 3) && (ctrmode == 4) && !statusframeint) {
-			++cpu.interrupt;
-			// System.err.println("frame interrupt set at " + cpu.cycles);
+			++nes.getCPU().interrupt;
+			// System.err.println("frame interrupt set at " +
+			// nes.getCPU().cycles);
 			statusframeint = true;
 
 		}
@@ -171,9 +165,9 @@ public class APU {
 
 	private void dmcfillbuffer() {
 		if (dmcsamplesleft > 0) {
-			dmcbuffer = cpuram.read(dmcaddr++);
+			dmcbuffer = nes.getCPURAM().read(dmcaddr++);
 			dmcBufferEmpty = false;
-			cpu.stealcycles(4);
+			nes.getCPU().stealcycles(4);
 			// DPCM Does steal cpu cycles - this should actually vary between
 			// 1-4
 			// can't do this properly without a cycle accurate cpu/ppu
@@ -190,7 +184,7 @@ public class APU {
 					// byte
 					// and finding that there are no more bytes left to read.
 					// that meant all dmc timing was too long.
-					++cpu.interrupt;
+					++nes.getCPU().interrupt;
 					statusdmcint = true;
 					// System.err.println("dmc irq fire");
 				}
@@ -201,7 +195,7 @@ public class APU {
 		}
 	}
 
-	public final void finishframe() {
+	public void finishframe() {
 		updateto(cyclesperframe);
 		apucycle = 0;
 		ai.flushFrame(nes.isFrameLimiterOn());
@@ -213,7 +207,7 @@ public class APU {
 		vol += TNDLOOKUP[3 * timers[2].getval() + 2 * volume[3] * timers[3].getval() + dmcvalue];
 		if (!expnSound.isEmpty()) {
 			vol *= 0.8;
-			for (ExpansionSoundChip c : expnSound) {
+			for (IExpansionSoundChip c : expnSound) {
 				vol += c.getval();
 			}
 		}
@@ -239,20 +233,21 @@ public class APU {
 		ai.pause();
 	}
 
-	public final int read(final int addr) {
-		updateto(cpu.clocks);
+	public int read(int addr) {
+		updateto(nes.getCPU().clocks);
 		switch (addr) {
 		case 0x15:
 			// returns channel status
 			// for future ref: NEED to put those ternary operators in
 			// parentheses!
 			// otherwise order of operations does the wrong thing.
-			final int returnval = ((lengthctr[0] > 0) ? 1 : 0) | ((lengthctr[1] > 0) ? 2 : 0)
-					| ((lengthctr[2] > 0) ? 4 : 0) | ((lengthctr[3] > 0) ? 8 : 0) | ((dmcsamplesleft > 0) ? 16 : 0)
-					| (statusframeint ? 64 : 0) | (statusdmcint ? 128 : 0);
+			int returnval = ((lengthctr[0] > 0) ? 1 : 0) | ((lengthctr[1] > 0) ? 2 : 0) | ((lengthctr[2] > 0) ? 4 : 0)
+					| ((lengthctr[3] > 0) ? 8 : 0) | ((dmcsamplesleft > 0) ? 16 : 0) | (statusframeint ? 64 : 0)
+					| (statusdmcint ? 128 : 0);
 			if (statusframeint) {
-				// System.err.println("Frame interrupt ack at " + cpu.cycles);
-				--cpu.interrupt;
+				// System.err.println("Frame interrupt ack at " +
+				// nes.getCPU().cycles);
+				--nes.getCPU().interrupt;
 				statusframeint = false;
 			}
 
@@ -267,6 +262,12 @@ public class APU {
 		default:
 			return 0x40; // open bus
 		}
+	}
+
+	public void reset() {
+		this.samplerate = 1; // just in case we can't init audio
+		// then init the audio stream
+		setParameters();
 	}
 
 	private void restartdmc() {
@@ -322,8 +323,8 @@ public class APU {
 		}
 	}
 
-	public final synchronized void setParameters() {
-		Mapper.TVType tvtype = cpuram.mapper.getTVType();
+	public synchronized void setParameters() {
+		TVType tvtype = nes.getMapper().getTVType();
 		soundFiltering = PrefsSingleton.get().getBoolean("soundFiltering", true);
 		samplerate = PrefsSingleton.get().getInt("sampleRate", 44100);
 		if (ai != null) {
@@ -374,7 +375,7 @@ public class APU {
 				sweeppos[i] = sweepperiod[i];
 			}
 			++sweeppos[i];
-			final int rawperiod = (timers[i].getperiod() >> 1);
+			int rawperiod = (timers[i].getperiod() >> 1);
 			int shiftedperiod = (rawperiod >> sweepshift[i]);
 			if (sweepnegate[i]) {
 				// invert bits of period
@@ -401,7 +402,7 @@ public class APU {
 		// System.err.println("setvolumes " + volume[1]);
 	}
 
-	public final void updateto(final int cpucycle) {
+	public void updateto(int cpucycle) {
 		// still have to run this even if sound is disabled, some games rely on
 		// DMC IRQ etc.
 		if (soundFiltering) {
@@ -425,7 +426,7 @@ public class APU {
 				}
 				timers[3].clock();
 				if (!expnSound.isEmpty()) {
-					for (ExpansionSoundChip c : expnSound) {
+					for (IExpansionSoundChip c : expnSound) {
 						c.clock(1);
 					}
 				}
@@ -460,7 +461,7 @@ public class APU {
 					timers[3].clock(remainder);
 					int mixvol = getOutputLevel();
 					if (!expnSound.isEmpty()) {
-						for (ExpansionSoundChip c : expnSound) {
+						for (IExpansionSoundChip c : expnSound) {
 							c.clock(remainder);
 						}
 					}
@@ -472,31 +473,31 @@ public class APU {
 		}
 	}
 
-	public final void write(final int reg, final int data) {
+	public void write(int reg, int data) {
 		// This is how values written to any of the APU's memory
 		// mapped registers change the state of the system.
-		updateto(cpu.clocks - 1);
+		updateto(nes.getCPU().clocks - 1);
 		// System.err.println("Wrote " + utils.hex(data) + " to " +
-		// utils.hex(reg) + " @ cycle " + cpu.cycles);
+		// utils.hex(reg) + " @ cycle " + nes.getCPU().cycles);
 		switch (reg) {
 		case 0x0:
 			// length counter 1 halt
-			lenctrHalt[0] = ((data & (utils.BIT5)) != 0);
+			lenctrHalt[0] = ((data & (Utils.BIT5)) != 0);
 			// pulse 1 duty cycle
 			timers[0].setduty(DUTYLOOKUP[data >> 6]);
 			// and envelope
-			envConstVolume[0] = ((data & (utils.BIT4)) != 0);
+			envConstVolume[0] = ((data & (Utils.BIT4)) != 0);
 			envelopeValue[0] = data & 15;
 			// setvolumes();
 			break;
 		case 0x1:
 			// pulse 1 sweep setup
 			// sweep enabled
-			sweepenable[0] = ((data & (utils.BIT7)) != 0);
+			sweepenable[0] = ((data & (Utils.BIT7)) != 0);
 			// sweep divider period
 			sweepperiod[0] = (data >> 4) & 7;
 			// sweep negate flag
-			sweepnegate[0] = ((data & (utils.BIT3)) != 0);
+			sweepnegate[0] = ((data & (Utils.BIT3)) != 0);
 			// sweep shift count
 			sweepshift[0] = (data & 7);
 			sweepreload[0] = true;
@@ -518,22 +519,22 @@ public class APU {
 			break;
 		case 0x4:
 			// length counter 2 halt
-			lenctrHalt[1] = ((data & (utils.BIT5)) != 0);
+			lenctrHalt[1] = ((data & (Utils.BIT5)) != 0);
 			// pulse 2 duty cycle
 			timers[1].setduty(DUTYLOOKUP[data >> 6]);
 			// and envelope
-			envConstVolume[1] = ((data & (utils.BIT4)) != 0);
+			envConstVolume[1] = ((data & (Utils.BIT4)) != 0);
 			envelopeValue[1] = data & 15;
 			// setvolumes();
 			break;
 		case 0x5:
 			// pulse 2 sweep setup
 			// sweep enabled
-			sweepenable[1] = ((data & (utils.BIT7)) != 0);
+			sweepenable[1] = ((data & (Utils.BIT7)) != 0);
 			// sweep divider period
 			sweepperiod[1] = (data >> 4) & 7;
 			// sweep negate flag
-			sweepnegate[1] = ((data & (utils.BIT3)) != 0);
+			sweepnegate[1] = ((data & (Utils.BIT3)) != 0);
 			// sweep shift count
 			sweepshift[1] = (data & 7);
 			sweepreload[1] = true;
@@ -556,7 +557,7 @@ public class APU {
 			// triangle linear counter load
 			linctrreload = data & 0x7f;
 			// and length counter halt
-			lenctrHalt[2] = ((data & (utils.BIT7)) != 0);
+			lenctrHalt[2] = ((data & (Utils.BIT7)) != 0);
 			break;
 		case 0x9:
 			break;
@@ -575,15 +576,15 @@ public class APU {
 			break;
 		case 0xC:
 			// noise halt and envelope
-			lenctrHalt[3] = ((data & (utils.BIT5)) != 0);
-			envConstVolume[3] = ((data & (utils.BIT4)) != 0);
+			lenctrHalt[3] = ((data & (Utils.BIT5)) != 0);
+			envConstVolume[3] = ((data & (Utils.BIT4)) != 0);
 			envelopeValue[3] = data & 0xf;
 			// setvolumes();
 			break;
 		case 0xD:
 			break;
 		case 0xE:
-			timers[3].setduty(((data & (utils.BIT7)) != 0) ? 6 : 1);
+			timers[3].setduty(((data & (Utils.BIT7)) != 0) ? 6 : 1);
 			timers[3].setperiod(noiseperiod[data & 15]);
 			break;
 		case 0xF:
@@ -594,11 +595,11 @@ public class APU {
 			envelopeStartFlag[3] = true;
 			break;
 		case 0x10:
-			dmcirq = ((data & (utils.BIT7)) != 0);
-			dmcloop = ((data & (utils.BIT6)) != 0);
+			dmcirq = ((data & (Utils.BIT7)) != 0);
+			dmcloop = ((data & (Utils.BIT6)) != 0);
 			dmcrate = dmcperiods[data & 0xf];
 			if (!dmcirq && statusdmcint) {
-				--cpu.interrupt;
+				--nes.getCPU().interrupt;
 				statusdmcint = false;
 			}
 			// System.err.println(dmcirq ? "dmc irq on" : "dmc irq off");
@@ -615,7 +616,7 @@ public class APU {
 		case 0x14:
 			// sprite dma
 			for (int i = 0; i < 256; ++i) {
-				cpuram.write(0x2004, cpuram.read((data << 8) + i));
+				nes.getCPURAM().write(0x2004, nes.getCPURAM().read((data << 8) + i));
 			}
 			// account for time stolen from cpu
 			sprdma_count = 2;
@@ -633,7 +634,7 @@ public class APU {
 					lengthctr[i] = 0;
 				}
 			}
-			if (((data & (utils.BIT4)) != 0)) {
+			if (((data & (Utils.BIT4)) != 0)) {
 				if (dmcsamplesleft == 0) {
 					restartdmc();
 				}
@@ -642,26 +643,28 @@ public class APU {
 				dmcsilence = true;
 			}
 			if (statusdmcint) {
-				--cpu.interrupt;
+				--nes.getCPU().interrupt;
 				statusdmcint = false;
 			}
 			break;
 		case 0x16:
 			// latch controller 1 + 2
-			nes.getcontroller1().output(((data & (utils.BIT0)) != 0));
-			nes.getcontroller2().output(((data & (utils.BIT0)) != 0));
+			nes.getcontroller1().output(((data & (Utils.BIT0)) != 0));
+			nes.getcontroller2().output(((data & (Utils.BIT0)) != 0));
 			break;
 		case 0x17:
-			ctrmode = ((data & (utils.BIT7)) != 0) ? 5 : 4;
-			// System.err.println("reset " + ctrmode + ' ' + cpu.cycles);
-			apuintflag = ((data & (utils.BIT6)) != 0);
+			ctrmode = ((data & (Utils.BIT7)) != 0) ? 5 : 4;
+			// System.err.println("reset " + ctrmode + ' ' +
+			// nes.getCPU().cycles);
+			apuintflag = ((data & (Utils.BIT6)) != 0);
 			// set is no interrupt, clear is an interrupt
 			framectr = 0;
 			framectrdiv = framectrreload + 8; // Why +8?
 			if (apuintflag && statusframeint) {
 				statusframeint = false;
-				--cpu.interrupt;
-				// System.err.println("Frame interrupt off at " + cpu.cycles);
+				--nes.getCPU().interrupt;
+				// System.err.println("Frame interrupt off at " +
+				// nes.getCPU().cycles);
 			}
 			if (ctrmode == 5) {
 				// everything frame counter runs is clocked no matter what

@@ -1,15 +1,22 @@
 package jnesulator.core.nes.mapper;
 
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+
 /**
  * Speed optimization for NROM games: copy everything to linear mapping and
  * don't use the bankswitching capability at all
  *
  * thanks to Stephen Chin - steveonjava@gmail.com
  */
-public class NromMapper extends Mapper {
+public class NromMapper extends BaseMapper {
+
+	public NromMapper(NES nes) {
+		super(nes);
+	}
 
 	@Override
-	public int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		if (addr >= 0x8000) {
 			return prg[addr];
 		} else if (addr >= 0x6000 && hasprgram) {
@@ -19,9 +26,8 @@ public class NromMapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		super.loadrom();
-		// copy the whole rom around so we need to do less math
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 
 		int[] shiftedprg = new int[65536];
 		System.arraycopy(prg, 0, shiftedprg, 0x8000, prg.length);
@@ -52,7 +58,7 @@ public class NromMapper extends Mapper {
 					if (addr >= 0x10 && ((addr & 3) == 0)) {
 						addr -= 0x10;
 					}
-					return ppu.pal[addr];
+					return getNES().getPPU().pal[addr];
 				} else {
 					return nt3[addr & 0x3ff];
 				}

@@ -1,22 +1,29 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class VRC2Mapper extends Mapper {
+public class VRC2Mapper extends BaseMapper {
 	// vrc2a mapper(INES #22); vrc2b is mapped to 23 along with the one form of
 	// vrc4
 
 	int prgbank0, prgbank1 = 0;
+
 	int[] chrbank = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
+	public VRC2Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
 		}
-		boolean bit0 = ((addr & (utils.BIT1)) != 0);
-		boolean bit1 = ((addr & (utils.BIT0)) != 0);
+		boolean bit0 = ((addr & (Utils.BIT1)) != 0);
+		boolean bit1 = ((addr & (Utils.BIT0)) != 0);
 		switch (addr >> 12) {
 		case 0x8:
 			prgbank0 = data & 0xf;
@@ -25,10 +32,10 @@ public class VRC2Mapper extends Mapper {
 			// mirroring
 			switch (data & 1) {
 			case 0:
-				setmirroring(Mapper.MirrorType.V_MIRROR);
+				setmirroring(MirrorType.V_MIRROR);
 				break;
 			case 1:
-				setmirroring(Mapper.MirrorType.H_MIRROR);
+				setmirroring(MirrorType.H_MIRROR);
 				break;
 			}
 			// 4-4-2016: seems VRC2 only has 1 mirroring bit
@@ -61,9 +68,8 @@ public class VRC2Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			// map last banks in to start off
 			prg_map[32 - i] = prgsize - (1024 * i);

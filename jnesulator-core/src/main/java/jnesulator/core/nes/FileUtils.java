@@ -9,10 +9,10 @@ import java.io.IOException;
 public class FileUtils {
 	private static class AsyncWriter implements Runnable {
 
-		private final int[] a;
-		private final String path;
+		private int[] a;
+		private String path;
 
-		public AsyncWriter(final int[] a, final String path) {
+		public AsyncWriter(int[] a, String path) {
 			this.a = a;
 			this.path = path;
 		}
@@ -37,7 +37,7 @@ public class FileUtils {
 		}
 	}
 
-	public static void asyncwritetofile(final int[] array, final String path) {
+	public static void asyncwritetofile(int[] array, String path) {
 		// now does the file writing in the dispatch thread
 		// hopefully that will eliminate annoying hitches when file system's
 		// slow
@@ -46,16 +46,16 @@ public class FileUtils {
 		EventQueue.invokeLater(writer);
 	}
 
-	public static boolean exists(final String path) {
+	public static boolean exists(String path) {
 		File f = new File(path);
 		return f.canRead() && !f.isDirectory();
 	}
 
-	public static String getExtension(final File f) {
+	public static String getExtension(File f) {
 		return getExtension(f.getName());
 	}
 
-	public static String getExtension(final String s) {
+	public static String getExtension(String s) {
 		if (s == null || s.equals("")) {
 			return "";
 		}
@@ -71,7 +71,7 @@ public class FileUtils {
 		return new File(path).getName();
 	}
 
-	public static int[] readfromfile(final String path) {
+	public static int[] readfromfile(String path) {
 		File f = new File(path);
 		byte[] bytes = new byte[(int) f.length()];
 		FileInputStream fis;
@@ -92,7 +92,7 @@ public class FileUtils {
 		return ints;
 	}
 
-	public static String stripExtension(final File f) {
+	public static String stripExtension(File f) {
 		String s = f.getName();
 		if (s == null || s.equals("")) {
 			return "";
@@ -104,7 +104,7 @@ public class FileUtils {
 		return s.substring(0, split);
 	}
 
-	public static String stripExtension(final String s) {
+	public static String stripExtension(String s) {
 		if (s == null || s.equals("")) {
 			return "";
 		}
@@ -115,7 +115,7 @@ public class FileUtils {
 		return s.substring(0, split);
 	}
 
-	public static void writetofile(final int[] array, final String path) {
+	public static void writetofile(int[] array, String path) {
 		// note: does NOT write the ints directly to the file - only the low
 		// bytes.
 		AsyncWriter writer = new AsyncWriter(array, path);

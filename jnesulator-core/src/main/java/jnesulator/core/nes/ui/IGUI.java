@@ -2,11 +2,9 @@ package jnesulator.core.nes.ui;
 
 import jnesulator.core.nes.NES;
 
-public interface GUIInterface extends Runnable {
+public interface IGUI extends Runnable {
 
 	NES getNes();
-
-	void loadROMs(String path);
 
 	void messageBox(String message);
 

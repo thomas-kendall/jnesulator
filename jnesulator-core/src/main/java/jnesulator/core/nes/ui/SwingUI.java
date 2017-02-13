@@ -48,12 +48,12 @@ import jnesulator.core.nes.video.NTSCRenderer;
 import jnesulator.core.nes.video.RGBRenderer;
 import jnesulator.core.nes.video.Renderer;
 
-public class SwingUI extends JFrame implements GUIInterface {
+public class SwingUI extends JFrame implements IGUI {
 
 	public class AL implements ActionListener, WindowListener {
 
 		@Override
-		public void actionPerformed(final ActionEvent arg0) {
+		public void actionPerformed(ActionEvent arg0) {
 			// placeholder for more robust handler
 			if (arg0.getActionCommand().equals("Quit")) {
 				close();
@@ -70,7 +70,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 			} else if (arg0.getActionCommand().equals("Fast Forward")) {
 				nes.toggleFrameLimiter();
 			} else if (arg0.getActionCommand().equals("About")) {
-				messageBox("jnesulator " + NES.VERSION + "\n"
+				messageBox("jnesulator\n"
 						+ "Get the latest version and report any bugs at https://github.com/thomas-kendall/jnesulator \n"
 						+ "\n" + "This program is free software licensed under the GPL version 3, and comes with \n"
 						+ "NO WARRANTY of any kind. (but if something's broken, please report it). \n"
@@ -144,16 +144,16 @@ public class SwingUI extends JFrame implements GUIInterface {
 	private Canvas canvas;
 	private BufferStrategy buffer;
 	private NES nes;
-	private final AL listener = new AL();
+	private AL listener = new AL();
 	private int screenScaleFactor;
-	private final long[] frametimes = new long[60];
+	private long[] frametimes = new long[60];
 	private int frametimeptr = 0;
 	private boolean smoothScale, inFullScreen = false;
 	private GraphicsDevice gd;
 	private int NES_HEIGHT, NES_WIDTH;
 	private Renderer renderer;
 
-	private final ControllerImpl padController1, padController2;
+	private ControllerImpl padController1, padController2;
 
 	int bgcolor;
 
@@ -264,7 +264,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 	}
 
 	private File extractRomFromZip(String zipName, String romName) throws IOException {
-		final ZipInputStream zipStream = new ZipInputStream(new FileInputStream(zipName));
+		ZipInputStream zipStream = new ZipInputStream(new FileInputStream(zipName));
 		ZipEntry entry;
 		do {
 			entry = zipStream.getNextEntry();
@@ -277,15 +277,15 @@ public class SwingUI extends JFrame implements GUIInterface {
 
 		// note: here's the bug, when it saves the temp file if it's in a folder
 		// in the zip it's trying to put it in the same folder outside the zip
-		final File outputFile = new File(new File(zipName).getParent() + File.separator
+		File outputFile = new File(new File(zipName).getParent() + File.separator
 				+ FileUtils.stripExtension(new File(zipName).getName()) + " - " + romName);
 		if (outputFile.exists()) {
 			this.messageBox("Cannot extract file. File " + outputFile.getCanonicalPath() + " already exists.");
 			zipStream.close();
 			return null;
 		}
-		final byte[] buf = new byte[4096];
-		final FileOutputStream fos = new FileOutputStream(outputFile);
+		byte[] buf = new byte[4096];
+		FileOutputStream fos = new FileOutputStream(outputFile);
 		int numBytes;
 		while ((numBytes = zipStream.read(buf, 0, buf.length)) != -1) {
 			fos.write(buf, 0, numBytes);
@@ -295,7 +295,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 		return outputFile;
 	}
 
-	private double getmaxscale(final int width, final int height) {
+	private double getmaxscale(int width, int height) {
 		return Math.min(height / (double) NES_HEIGHT, width / (double) NES_WIDTH);
 	}
 
@@ -305,11 +305,11 @@ public class SwingUI extends JFrame implements GUIInterface {
 	}
 
 	private List<String> listRomsInZip(String zipName) throws IOException {
-		final ZipFile zipFile = new ZipFile(zipName);
-		final Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
-		final List<String> romNames = new ArrayList<>();
+		ZipFile zipFile = new ZipFile(zipName);
+		Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
+		List<String> romNames = new ArrayList<>();
 		while (zipEntries.hasMoreElements()) {
-			final ZipEntry entry = zipEntries.nextElement();
+			ZipEntry entry = zipEntries.nextElement();
 			if (!entry.isDirectory() && (entry.getName().endsWith(".nes") || entry.getName().endsWith(".fds")
 					|| entry.getName().endsWith(".nsf"))) {
 				romNames.add(entry.getName());
@@ -328,8 +328,8 @@ public class SwingUI extends JFrame implements GUIInterface {
 		fileDialog.setTitle("Select a ROM to load");
 		// should open last folder used, and if that doesn't exist, the folder
 		// it's running in
-		final String path = PrefsSingleton.get().get("filePath", System.getProperty("user.dir", ""));
-		final File startDirectory = new File(path);
+		String path = PrefsSingleton.get().get("filePath", System.getProperty("user.dir", ""));
+		File startDirectory = new File(path);
 		if (startDirectory.isDirectory()) {
 			fileDialog.setDirectory(path);
 		}
@@ -369,9 +369,9 @@ public class SwingUI extends JFrame implements GUIInterface {
 	}
 
 	private void loadRomFromZip(String zipName) throws IOException {
-		final String romName = selectRomInZip(listRomsInZip(zipName));
+		String romName = selectRomInZip(listRomsInZip(zipName));
 		if (romName != null) {
-			final File extractedFile = extractRomFromZip(zipName, romName);
+			File extractedFile = extractRomFromZip(zipName, romName);
 			if (extractedFile != null) {
 				extractedFile.deleteOnExit();
 				nes.loadROM(extractedFile.getCanonicalPath());
@@ -380,27 +380,13 @@ public class SwingUI extends JFrame implements GUIInterface {
 	}
 
 	@Override
-	public void loadROMs(String path) {
-		throw new UnsupportedOperationException("Not supported yet."); // To
-																		// change
-																		// body
-																		// of
-																		// generated
-																		// methods,
-																		// choose
-																		// Tools
-																		// |
-																		// Templates.
-	}
-
-	@Override
-	public void messageBox(final String message) {
+	public void messageBox(String message) {
 		JOptionPane.showMessageDialog(this, message);
 	}
 
 	@Override
-	public final synchronized void render() {
-		final Graphics graphics = buffer.getDrawGraphics();
+	public synchronized void render() {
+		Graphics graphics = buffer.getDrawGraphics();
 		if (smoothScale) {
 			((Graphics2D) graphics).setRenderingHint(RenderingHints.KEY_INTERPOLATION,
 					RenderingHints.VALUE_INTERPOLATION_BILINEAR);
@@ -438,7 +424,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 	@Override
 	public synchronized void run() {
 		// construct window
-		this.setTitle("jnesulator " + NES.VERSION);
+		this.setTitle("jnesulator");
 		this.setResizable(false);
 		buildMenus();
 		setRenderOptions();
@@ -458,7 +444,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 		// now add the drag and drop handler.
 		TransferHandler handler = new TransferHandler() {
 			@Override
-			public boolean canImport(final TransferHandler.TransferSupport support) {
+			public boolean canImport(TransferHandler.TransferSupport support) {
 				if (!support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
 					return false;
 				}
@@ -467,7 +453,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 			}
 
 			@Override
-			public boolean importData(final TransferHandler.TransferSupport support) {
+			public boolean importData(TransferHandler.TransferSupport support) {
 				if (!canImport(support)) {
 					return false;
 				}
@@ -504,7 +490,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 	}
 
 	@Override
-	public final synchronized void setFrame(final int[] nextframe, final int[] bgcolors, boolean dotcrawl) {
+	public synchronized void setFrame(int[] nextframe, int[] bgcolors, boolean dotcrawl) {
 		// todo: stop running video filters while paused!
 		// also move video filters into a worker thread because they
 		// don't really depend on emulation state at all. Yes this is going to
@@ -523,8 +509,8 @@ public class SwingUI extends JFrame implements GUIInterface {
 			averageframes /= frametimes.length;
 			fps = 1E9 / averageframes;
 			this.setTitle(
-					String.format("jnesulator %s - %s, %2.2f fps" + ((frameskip > 0) ? " frameskip " + frameskip : ""),
-							NES.VERSION, nes.getCurrentRomName(), fps));
+					String.format("jnesulator - %s, %2.2f fps" + ((frameskip > 0) ? " frameskip " + frameskip : ""),
+							nes.getCurrentRomName(), fps));
 		}
 		if (nes.framecount % (frameskip + 1) == 0) {
 			frame = renderer.render(nextframe, bgcolors, dotcrawl);
@@ -571,9 +557,9 @@ public class SwingUI extends JFrame implements GUIInterface {
 
 	private void showActionReplayDialog() {
 		nes.pause();
-		final ActionReplay actionReplay = nes.getActionReplay();
+		ActionReplay actionReplay = nes.getActionReplay();
 		if (actionReplay != null) {
-			final ActionReplayGui dialog = new ActionReplayGui(this, false, actionReplay);
+			ActionReplayGui dialog = new ActionReplayGui(this, false, actionReplay);
 			dialog.setVisible(true);
 		} else {
 			JOptionPane.showMessageDialog(this, "You have to load a game first.", "No ROM", JOptionPane.ERROR_MESSAGE);
@@ -582,7 +568,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 	}
 
 	private void showControlsDialog() {
-		final ControlsDialog dialog = new ControlsDialog(this);
+		ControlsDialog dialog = new ControlsDialog(this);
 		dialog.setVisible(true);
 		if (dialog.okClicked()) {
 			padController1.setButtons();
@@ -591,7 +577,7 @@ public class SwingUI extends JFrame implements GUIInterface {
 	}
 
 	private void showOptions() {
-		final PreferencesDialog dialog = new PreferencesDialog(this);
+		PreferencesDialog dialog = new PreferencesDialog(this);
 		dialog.setVisible(true);
 		if (dialog.okClicked()) {
 			setRenderOptions();

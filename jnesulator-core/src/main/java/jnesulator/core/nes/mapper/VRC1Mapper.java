@@ -1,14 +1,21 @@
 package jnesulator.core.nes.mapper;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 
-public class VRC1Mapper extends Mapper {
+public class VRC1Mapper extends BaseMapper {
 
 	int prgbank0, prgbank1, prgbank2 = 0;
+
 	int[] chrbank = { 0, 0 };
 
+	public VRC1Mapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public final void cartWrite(int addr, int data) {
+	public void cartWrite(int addr, int data) {
 		if (addr < 0x8000 || addr > 0xffff) {
 			super.cartWrite(addr, data);
 			return;
@@ -20,7 +27,7 @@ public class VRC1Mapper extends Mapper {
 			setbanks();
 			break;
 		case 0x9:
-			setmirroring(((data & (utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
+			setmirroring(((data & (Utils.BIT0)) != 0) ? MirrorType.H_MIRROR : MirrorType.V_MIRROR);
 			chrbank[0] = (chrbank[0] & 0xf) | ((data << 3) & 0x10);
 			chrbank[1] = (chrbank[1] & 0xf) | ((data << 2) & 0x10);
 			setbanks();
@@ -45,9 +52,8 @@ public class VRC1Mapper extends Mapper {
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		// needs to be in every mapper. Fill with initial cfg
-		super.loadrom();
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		// swappable bank
 		for (int i = 0; i < 24; ++i) {
 			prg_map[i] = (1024 * i) & (prgsize - 1);

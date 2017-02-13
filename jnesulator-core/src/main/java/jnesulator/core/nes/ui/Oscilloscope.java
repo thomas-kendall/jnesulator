@@ -4,16 +4,16 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
-import jnesulator.core.nes.audio.AudioOutInterface;
+import jnesulator.core.nes.audio.IAudioOutput;
 
-public class Oscilloscope implements AudioOutInterface {
+public class Oscilloscope implements IAudioOutput {
 
-	final private static int width = 400, length = 640;
-	final private static int scf = 65536 / width / 2;
+	private static final int width = 400, length = 640;
+	private static final int scf = 65536 / width / 2;
 	DebugUI d;
 	BufferedImage b;
 	Graphics2D g;
-	AudioOutInterface iface;
+	IAudioOutput iface;
 	int[] buffer = new int[length];
 	int buf_ptr = 0;
 	int prevsample = 0;
@@ -29,7 +29,7 @@ public class Oscilloscope implements AudioOutInterface {
 		d.run();
 	}
 
-	public Oscilloscope(AudioOutInterface i) {
+	public Oscilloscope(IAudioOutput i) {
 		this.iface = i;
 		d = new DebugUI(length, width);
 		b = new BufferedImage(length, width, BufferedImage.TYPE_INT_ARGB_PRE);

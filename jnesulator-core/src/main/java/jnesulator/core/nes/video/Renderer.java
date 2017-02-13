@@ -17,14 +17,14 @@ public abstract class Renderer {
 	int imgctr = 0;
 
 	public BufferedImage getBufferedImage(int[] frame) {
-		final BufferedImage image = imgs[++imgctr % imgs.length];
-		final WritableRaster raster = image.getRaster();
-		final int[] pixels = ((DataBufferInt) raster.getDataBuffer()).getData();
+		BufferedImage image = imgs[++imgctr % imgs.length];
+		WritableRaster raster = image.getRaster();
+		int[] pixels = ((DataBufferInt) raster.getDataBuffer()).getData();
 		System.arraycopy(frame, frame_width * clip, pixels, 0, frame_width * height);
 		return image;
 	}
 
-	protected final void init_images() {
+	protected void init_images() {
 		for (int i = 0; i < imgs.length; ++i) {
 			imgs[i] = new BufferedImage(frame_width, height, BufferedImage.TYPE_INT_ARGB_PRE);
 		}

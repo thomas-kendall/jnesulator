@@ -2,12 +2,15 @@ package jnesulator.core.nes.mapper;
 
 import java.util.Arrays;
 
-import jnesulator.core.nes.utils;
+import jnesulator.core.nes.NES;
+import jnesulator.core.nes.ROMLoader;
+import jnesulator.core.nes.Utils;
 import jnesulator.core.nes.audio.Namco163SoundChip;
 
-public class NamcoMapper extends Mapper {
+public class NamcoMapper extends BaseMapper {
 
 	private int soundAddr = 0;
+
 	private boolean autoincrement = false, irqenable = false, interrupted = false, chrramenable0 = false,
 			chrramenable1 = false;
 	Namco163SoundChip sound = new Namco163SoundChip();
@@ -15,12 +18,16 @@ public class NamcoMapper extends Mapper {
 	private int irqcounter = 0x3fff;
 	private int[] chrbanks = new int[8], chr_ram = new int[16384];
 
+	public NamcoMapper(NES nes) {
+		super(nes);
+	}
+
 	@Override
-	public int cartRead(final int addr) {
+	public int cartRead(int addr) {
 		if (addr >= 0x4800 && addr < 0x5000) {
 			// read sound ram
 			if (!hasInitSound) {
-				cpuram.apu.addExpnSound(sound);
+				getNES().getAPU().addExpnSound(sound);
 				hasInitSound = true;
 			}
 			int retval = sound.read(soundAddr);
@@ -44,7 +51,7 @@ public class NamcoMapper extends Mapper {
 	}
 
 	@Override
-	public final void cartWrite(final int addr, final int data) {
+	public void cartWrite(int addr,  int data) {
 		if (addr < 0x4800 || ((addr >= 0x6000) && (addr < 0x8000)) || addr > 0xffff) {
 			// need to add WRAM protection here
 			super.cartWrite(addr, data);
@@ -52,7 +59,7 @@ public class NamcoMapper extends Mapper {
 		} else if (addr <= 0x4fff) {
 			// write to sound chip
 			if (!hasInitSound) {
-				cpuram.apu.addExpnSound(sound);
+				getNES().getAPU().addExpnSound(sound);
 				hasInitSound = true;
 			}
 			sound.write(soundAddr, data);
@@ -68,7 +75,7 @@ public class NamcoMapper extends Mapper {
 			// irq counter high 7 bits
 			irqcounter &= 0xff;
 			irqcounter |= ((data & 0x7f) << 8);
-			irqenable = ((data & (utils.BIT7)) != 0);
+			irqenable = ((data & (Utils.BIT7)) != 0);
 			irqack();
 			// and bit 7 is irq enable
 		} else if (addr <= 0xbfff) {
@@ -85,28 +92,28 @@ public class NamcoMapper extends Mapper {
 				// i hope it doesnt try to write while it's chr rom
 				nt0 = Arrays.copyOfRange(chr, (data * 1024), (data + 1) * 1024);
 			} else {
-				nt0 = (((data & (utils.BIT0)) != 0) ? pput1 : pput0);
+				nt0 = (((data & (Utils.BIT0)) != 0) ? pput1 : pput0);
 			}
 		} else if (addr <= 0xc8ff) {
 			// nametable select 2
 			if (data < 0xe0) {
 				nt1 = Arrays.copyOfRange(chr, (data * 1024), (data + 1) * 1024);
 			} else {
-				nt1 = (((data & (utils.BIT0)) != 0) ? pput1 : pput0);
+				nt1 = (((data & (Utils.BIT0)) != 0) ? pput1 : pput0);
 			}
 		} else if (addr <= 0xd7ff) {
 			// nametable select 3
 			if (data < 0xe0) {
 				nt2 = Arrays.copyOfRange(chr, (data * 1024), (data + 1) * 1024);
 			} else {
-				nt2 = (((data & (utils.BIT0)) != 0) ? pput1 : pput0);
+				nt2 = (((data & (Utils.BIT0)) != 0) ? pput1 : pput0);
 			}
 		} else if (addr <= 0xdfff) {
 			// nametable select 4
 			if (data < 0xe0) {
 				nt3 = Arrays.copyOfRange(chr, (data * 1024), (data + 1) * 1024);
 			} else {
-				nt3 = (((data & (utils.BIT0)) != 0) ? pput1 : pput0);
+				nt3 = (((data & (Utils.BIT0)) != 0) ? pput1 : pput0);
 			}
 		} else if (addr <= 0xe7ff) {
 			// prg select 1 (1st 6 bits) and mirroring
@@ -118,8 +125,8 @@ public class NamcoMapper extends Mapper {
 			for (int i = 0; i < 8; ++i) {
 				prg_map[i + 8] = (1024 * (i + 8 * (data & 63))) % prgsize;
 			}
-			chrramenable0 = !((data & (utils.BIT6)) != 0);
-			chrramenable1 = !((data & (utils.BIT7)) != 0);
+			chrramenable0 = !((data & (Utils.BIT6)) != 0);
+			chrramenable1 = !((data & (Utils.BIT7)) != 0);
 		} else if (addr <= 0xf7ff) {
 			for (int i = 0; i < 8; ++i) {
 				prg_map[i + 16] = (1024 * (i + 8 * (data & 63))) % prgsize;
@@ -128,7 +135,7 @@ public class NamcoMapper extends Mapper {
 		} else if (addr <= 0xffff) {
 			// write protect for prg ram on namco 163
 			// also sound address port (7 bits)
-			autoincrement = ((data & (utils.BIT7)) != 0);
+			autoincrement = ((data & (Utils.BIT7)) != 0);
 			soundAddr = data & 0x7f;
 		}
 	}
@@ -140,23 +147,22 @@ public class NamcoMapper extends Mapper {
 			irqcounter = 0x7fff;
 		}
 		if (irqcounter == 0x7fff && irqenable && !interrupted) {
-			++cpu.interrupt;
+			++getNES().getCPU().interrupt;
 			interrupted = true;
 		}
 	}
 
 	private void irqack() {
 		if (interrupted) {
-			--cpu.interrupt;
+			--getNES().getCPU().interrupt;
 			interrupted = false;
 		}
 
 	}
 
 	@Override
-	public void loadrom() throws BadMapperException {
-		super.loadrom();
-		// needs to be in every mapper. Fill with initial cfg
+	public void loadrom(ROMLoader loader) throws BadMapperException {
+		super.loadrom(loader);
 		for (int i = 1; i <= 32; ++i) {
 			// map last banks in to start off
 			prg_map[32 - i] = prgsize - (1024 * i);
@@ -188,7 +194,7 @@ public class NamcoMapper extends Mapper {
 	}
 
 	@Override
-	public void ppuWrite(int addr, final int data) {
+	public void ppuWrite(int addr, int data) {
 		addr &= 0x3fff;
 		if (addr < 0x1000) {
 			if (chrramenable0 && chrbanks[addr >> 10] > 0xe0) {
@@ -207,7 +213,7 @@ public class NamcoMapper extends Mapper {
 		}
 	}
 
-	private void setppubank(final int banksize, final int bankpos, final int banknum) {
+	private void setppubank(int banksize, int bankpos, int banknum) {
 		// System.err.println(banksize + ", " + bankpos + ", "+ banknum);
 		for (int i = 0; i < banksize; ++i) {
 			chr_map[i + bankpos] = (1024 * ((banknum) + i)) & (chrsize - 1);
