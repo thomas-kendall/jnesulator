@@ -42,6 +42,8 @@ import javax.swing.TransferHandler;
 import jnesulator.core.nes.FileUtils;
 import jnesulator.core.nes.NES;
 import jnesulator.core.nes.PrefsSingleton;
+import jnesulator.core.nes.audio.IAudioConsumer;
+import jnesulator.core.nes.audio.SwingAudioImpl;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.cheats.ActionReplayGui;
 import jnesulator.core.nes.video.NTSCRenderer;
@@ -164,18 +166,21 @@ public class SwingUI extends JFrame implements IGUI {
 	int frameskip = 0;
 
 	public SwingUI(String[] args) {
-		nes = new NES(this);
+		IAudioConsumer audioConsumer = new SwingAudioImpl();
+		nes = new NES(this, audioConsumer);
 		screenScaleFactor = PrefsSingleton.get().getInt("screenScaling", 2);
 		padController1 = new ControllerImpl(this, 0);
 		padController2 = new ControllerImpl(this, 1);
 		nes.setControllers(padController1, padController2);
 		padController1.startEventQueue();
 		padController2.startEventQueue();
+		this.run();
 		if (args == null || args.length < 1 || args[0] == null) {
 			nes.run();
 		} else {
 			nes.run(args[0]);
 		}
+
 	}
 
 	public void buildMenus() {

@@ -1,15 +1,17 @@
 package jnesulator.core.nes.audio;
 
-public class Reverberator implements IAudioOutput {
+import jnesulator.core.nes.mapper.TVType;
 
-	IAudioOutput iface;
+public class Reverberator implements IAudioConsumer {
+
+	IAudioConsumer iface;
 	CircularBuffer cb;
 	double echo, lp_coef, hp_coef;
 
 	int lpaccum = 0;
 	private int dckiller = 0;
 
-	public Reverberator(IAudioOutput i, int length, double echo_gain, double lp_coef, double hp_coef) {
+	public Reverberator(IAudioConsumer i, int length, double echo_gain, double lp_coef, double hp_coef) {
 		this.echo = echo_gain;
 		this.lp_coef = lp_coef;
 		this.hp_coef = hp_coef;
@@ -48,6 +50,11 @@ public class Reverberator implements IAudioOutput {
 		dckiller += (sample > 0 ? -1 : 1);// guarantees the signal decays to
 											// exactly zero
 		return sample;
+	}
+
+	@Override
+	public void initialize(int samplerate, TVType tvtype) {
+		// TODO: Not sure we have the right interface
 	}
 
 	private int lowpass_filter(int sample) {

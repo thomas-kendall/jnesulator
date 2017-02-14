@@ -2,6 +2,7 @@ package jnesulator.core.nes.ui;
 
 import jnesulator.core.nes.NES;
 
+// TODO: Remove this and use something more appropriate, like ISystemIO. Also decouple it from Runnable.
 public interface IGUI extends Runnable {
 
 	NES getNes();

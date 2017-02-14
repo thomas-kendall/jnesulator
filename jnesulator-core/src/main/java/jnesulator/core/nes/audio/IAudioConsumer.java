@@ -1,12 +1,16 @@
 package jnesulator.core.nes.audio;
 
-public interface IAudioOutput {
+import jnesulator.core.nes.mapper.TVType;
+
+public interface IAudioConsumer {
 
 	boolean bufferHasLessThan(int samples);
 
 	void destroy();
 
 	void flushFrame(boolean waitIfBufferFull);
+
+	void initialize(int samplerate, TVType tvtype);
 
 	void outputSample(int sample);
 

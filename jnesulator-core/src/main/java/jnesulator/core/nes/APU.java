@@ -2,15 +2,12 @@ package jnesulator.core.nes;
 
 import java.util.ArrayList;
 
-import jnesulator.core.nes.audio.IAudioOutput;
 import jnesulator.core.nes.audio.IExpansionSoundChip;
 import jnesulator.core.nes.audio.NoiseTimer;
 import jnesulator.core.nes.audio.SquareTimer;
-import jnesulator.core.nes.audio.SwingAudioImpl;
 import jnesulator.core.nes.audio.Timer;
 import jnesulator.core.nes.audio.TriangleTimer;
 import jnesulator.core.nes.mapper.TVType;
-import jnesulator.core.nes.ui.Oscilloscope;
 
 public class APU {
 
@@ -82,8 +79,6 @@ public class APU {
 
 	private int cyclesperframe;
 
-	private IAudioOutput ai;
-
 	public APU(NES nes) {
 		this.nes = nes;
 	}
@@ -93,7 +88,7 @@ public class APU {
 	}
 
 	public boolean bufferHasLessThan(int samples) {
-		return ai.bufferHasLessThan(samples);
+		return nes.getAudioConsumer().bufferHasLessThan(samples);
 	}
 
 	private void clockdmc() {
@@ -160,7 +155,7 @@ public class APU {
 	}
 
 	public void destroy() {
-		ai.destroy();
+		nes.getAudioConsumer().destroy();
 	}
 
 	private void dmcfillbuffer() {
@@ -198,7 +193,7 @@ public class APU {
 	public void finishframe() {
 		updateto(cyclesperframe);
 		apucycle = 0;
-		ai.flushFrame(nes.isFrameLimiterOn());
+		nes.getAudioConsumer().flushFrame(nes.isFrameLimiterOn());
 	}
 
 	private int getOutputLevel() {
@@ -230,7 +225,7 @@ public class APU {
 	}
 
 	public void pause() {
-		ai.pause();
+		nes.getAudioConsumer().pause();
 	}
 
 	public int read(int addr) {
@@ -277,7 +272,7 @@ public class APU {
 	}
 
 	public void resume() {
-		ai.resume();
+		nes.getAudioConsumer().resume();
 	}
 
 	private void setenvelope() {
@@ -327,14 +322,16 @@ public class APU {
 		TVType tvtype = nes.getMapper().getTVType();
 		soundFiltering = PrefsSingleton.get().getBoolean("soundFiltering", true);
 		samplerate = PrefsSingleton.get().getInt("sampleRate", 44100);
-		if (ai != null) {
-			ai.destroy();
-		}
-		ai = new SwingAudioImpl(nes, samplerate, tvtype);
-		if (PrefsSingleton.get().getBoolean("showScope", false)) {
-			ai = new Oscilloscope(ai);
-		}
+		// if (audioConsumer != null) {
+		// nes.getAudioConsumer().destroy();
+		// }
+		// audioConsumer = new SwingAudioImpl(nes, samplerate, tvtype);
+		// if (PrefsSingleton.get().getBoolean("showScope", false)) {
+		// audioConsumer = new Oscilloscope(audioConsumer);
+		// }
 		// pick the appropriate pitches and lengths for NTSC or PAL
+		nes.getAudioConsumer().destroy();
+		nes.getAudioConsumer().initialize(samplerate, tvtype);
 		switch (tvtype) {
 		case NTSC:
 		default:
@@ -435,7 +432,7 @@ public class APU {
 				if ((apucycle % cyclespersample) < 1) {
 					// not quite right - there's a non-integer # cycles per
 					// sample.
-					ai.outputSample(lowpass_filter(highpass_filter((int) (accum / remainder))));
+					nes.getAudioConsumer().outputSample(lowpass_filter(highpass_filter((int) (accum / remainder))));
 					remainder = 0;
 					accum = 0;
 				}
@@ -466,7 +463,7 @@ public class APU {
 						}
 					}
 					remainder = 0;
-					ai.outputSample(lowpass_filter(highpass_filter(mixvol)));
+					nes.getAudioConsumer().outputSample(lowpass_filter(highpass_filter(mixvol)));
 				}
 				++apucycle;
 			}

@@ -1,6 +1,7 @@
 package jnesulator.core.nes;
 
 import javafx.application.Platform;
+import jnesulator.core.nes.audio.IAudioConsumer;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.mapper.BadMapperException;
 import jnesulator.core.nes.mapper.IMapper;
@@ -27,18 +28,16 @@ public class NES {
 	private IFrameLimiter limiter = new FrameLimiterImpl(this, 16639267);
 	// Pro Action Replay device
 	private ActionReplay actionReplay;
+	private IAudioConsumer audioConsumer;
 
-	public NES(IGUI gui) {
+	public NES(IGUI gui, IAudioConsumer audioConsumer) {
 		cpu = new CPU(this);
 		cpuram = new CPURAM(this);
 		apu = new APU(this);
 		ppu = new PPU(this);
 
-		if (gui != null) {
-			this.gui = gui;
-			gui.setNES(this);
-			gui.run();
-		}
+		this.gui = gui;
+		this.audioConsumer = audioConsumer;
 	}
 
 	public synchronized void frameAdvance() {
@@ -57,6 +56,10 @@ public class NES {
 
 	public APU getAPU() {
 		return apu;
+	}
+
+	public IAudioConsumer getAudioConsumer() {
+		return audioConsumer;
 	}
 
 	public IController getcontroller1() {
@@ -132,7 +135,6 @@ public class NES {
 				saveSRAM(false);
 			}
 			mapper = newmapper;
-			// now some annoying getting of all the references where they belong
 			cpuram.reset();
 			cpu.reset();
 			apu.reset();

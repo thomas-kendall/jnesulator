@@ -4,16 +4,17 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
-import jnesulator.core.nes.audio.IAudioOutput;
+import jnesulator.core.nes.audio.IAudioConsumer;
+import jnesulator.core.nes.mapper.TVType;
 
-public class Oscilloscope implements IAudioOutput {
+public class Oscilloscope implements IAudioConsumer {
 
 	private static final int width = 400, length = 640;
 	private static final int scf = 65536 / width / 2;
 	DebugUI d;
 	BufferedImage b;
 	Graphics2D g;
-	IAudioOutput iface;
+	IAudioConsumer iface;
 	int[] buffer = new int[length];
 	int buf_ptr = 0;
 	int prevsample = 0;
@@ -29,7 +30,7 @@ public class Oscilloscope implements IAudioOutput {
 		d.run();
 	}
 
-	public Oscilloscope(IAudioOutput i) {
+	public Oscilloscope(IAudioConsumer i) {
 		this.iface = i;
 		d = new DebugUI(length, width);
 		b = new BufferedImage(length, width, BufferedImage.TYPE_INT_ARGB_PRE);
@@ -73,6 +74,11 @@ public class Oscilloscope implements IAudioOutput {
 		d.setFrame(b);
 		buf_ptr = 0;
 
+	}
+
+	@Override
+	public void initialize(int samplerate, TVType tvtype) {
+		// TODO: Not sure
 	}
 
 	@Override
