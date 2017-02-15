@@ -18,16 +18,17 @@ import javafx.scene.control.ListView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import jnesulator.core.nes.FileUtils;
+import jnesulator.core.nes.NES;
 
 public class OnScreenMenu extends StackPane {
 
 	class GameAction extends MenuAction {
 
-		GameAction(File game) {
+		GameAction(NES nes, File game) {
 			name = game.getName();
 			action = () -> {
 				try {
-					gui.getNes().loadROM(game.getCanonicalPath());
+					nes.loadROM(game.getCanonicalPath());
 					Platform.runLater(() -> {
 						gameMenu.setVisible(false);
 						menu.setVisible(false);
@@ -81,6 +82,7 @@ public class OnScreenMenu extends StackPane {
 		}
 	}
 
+	private NES nes;
 	private IGUI gui;
 	private ListView<MenuAction> menu;
 	private ListView<MenuAction> gameMenu;
@@ -93,8 +95,8 @@ public class OnScreenMenu extends StackPane {
 	private ObservableList<MenuAction> games = FXCollections
 			.<MenuAction> observableArrayList(new MenuAction("Back", () -> gameMenu.setVisible(false)));
 
-	public OnScreenMenu(IGUI gui) {
-		this.gui = gui;
+	public OnScreenMenu(NES nes) {
+		this.nes = nes;
 		menu = new ListView<>(menuItems);
 		gameMenu = new ListView(games);
 		addMenuListeners(menu);
@@ -118,7 +120,7 @@ public class OnScreenMenu extends StackPane {
 	}
 
 	private void exit() {
-		gui.getNes().quit();
+		nes.quit();
 		Platform.exit();
 	}
 
@@ -203,7 +205,7 @@ public class OnScreenMenu extends StackPane {
 						"Could not load file:\nFile does not exist or is not a valid NES game.\n" + ex.getMessage());
 			}
 		} else {
-			games.add(new GameAction(new File(path)));
+			games.add(new GameAction(nes, new File(path)));
 			runGame(path);
 		}
 	}
@@ -218,17 +220,17 @@ public class OnScreenMenu extends StackPane {
 	}
 
 	private void reset() {
-		gui.getNes().reset();
+		nes.reset();
 		hide();
 	}
 
 	private void resume() {
-		gui.getNes().resume();
+		nes.resume();
 		hide();
 	}
 
 	private void runGame(String path) {
-		gui.getNes().loadROM(path);
+		nes.loadROM(path);
 		Platform.runLater(() -> {
 			gameMenu.setVisible(false);
 			hide();
@@ -236,7 +238,7 @@ public class OnScreenMenu extends StackPane {
 	}
 
 	public void show() {
-		gui.getNes().pause();
+		nes.pause();
 		setVisible(true);
 	}
 }

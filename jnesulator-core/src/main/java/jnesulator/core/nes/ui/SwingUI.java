@@ -47,7 +47,7 @@ import jnesulator.core.nes.audio.SwingAudioImpl;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.cheats.ActionReplayGui;
 
-public class SwingUI extends JFrame implements IGUI {
+public class SwingUI extends JFrame implements IGUI, Runnable {
 
 	public class AL implements ActionListener, WindowListener {
 
@@ -292,11 +292,6 @@ public class SwingUI extends JFrame implements IGUI {
 				width / (double) nes.getFrameManager().getWidth());
 	}
 
-	@Override
-	public NES getNes() {
-		return nes;
-	}
-
 	private List<String> listRomsInZip(String zipName) throws IOException {
 		ZipFile zipFile = new ZipFile(zipName);
 		Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
@@ -481,11 +476,6 @@ public class SwingUI extends JFrame implements IGUI {
 			return romNames.get(0);
 		}
 		return null;
-	}
-
-	@Override
-	public void setNES(NES nes) {
-		this.nes = nes;
 	}
 
 	public synchronized void setRenderOptions() {
