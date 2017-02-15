@@ -608,7 +608,7 @@ public class PPU {
 			debugDraw();
 		}
 		if (gui != null) {
-			gui.setFrame(bitmap, bgcolors, dotcrawl);
+			nes.getFrameManager().setFrame(bitmap, bgcolors, dotcrawl);
 		}
 
 	}

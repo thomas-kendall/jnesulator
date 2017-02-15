@@ -46,9 +46,6 @@ import jnesulator.core.nes.audio.IAudioConsumer;
 import jnesulator.core.nes.audio.SwingAudioImpl;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.cheats.ActionReplayGui;
-import jnesulator.core.nes.video.NTSCRenderer;
-import jnesulator.core.nes.video.RGBRenderer;
-import jnesulator.core.nes.video.Renderer;
 
 public class SwingUI extends JFrame implements IGUI {
 
@@ -148,22 +145,12 @@ public class SwingUI extends JFrame implements IGUI {
 	private NES nes;
 	private AL listener = new AL();
 	private int screenScaleFactor;
-	private long[] frametimes = new long[60];
-	private int frametimeptr = 0;
 	private boolean smoothScale, inFullScreen = false;
 	private GraphicsDevice gd;
-	private int NES_HEIGHT, NES_WIDTH;
-	private Renderer renderer;
 
 	private ControllerImpl padController1, padController2;
 
 	int bgcolor;
-
-	BufferedImage frame;
-
-	double fps;
-
-	int frameskip = 0;
 
 	public SwingUI(String[] args) {
 		IAudioConsumer audioConsumer = new SwingAudioImpl();
@@ -301,7 +288,8 @@ public class SwingUI extends JFrame implements IGUI {
 	}
 
 	private double getmaxscale(int width, int height) {
-		return Math.min(height / (double) NES_HEIGHT, width / (double) NES_WIDTH);
+		return Math.min(height / (double) nes.getFrameManager().getHeight(),
+				width / (double) nes.getFrameManager().getWidth());
 	}
 
 	@Override
@@ -390,7 +378,7 @@ public class SwingUI extends JFrame implements IGUI {
 	}
 
 	@Override
-	public synchronized void render() {
+	public synchronized void render(BufferedImage frame) {
 		Graphics graphics = buffer.getDrawGraphics();
 		if (smoothScale) {
 			((Graphics2D) graphics).setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -407,7 +395,7 @@ public class SwingUI extends JFrame implements IGUI {
 			graphics.fillRect(0, 0, scrnwidth, scrnheight);
 			if (PrefsSingleton.get().getBoolean("maintainAspect", true)) {
 				double scalefactor = getmaxscale(scrnwidth, scrnheight);
-				int height = (int) (NES_HEIGHT * scalefactor);
+				int height = (int) (nes.getFrameManager().getHeight() * scalefactor);
 				int width = (int) (256 * scalefactor * 1.1666667);
 				graphics.drawImage(frame, ((scrnwidth / 2) - (width / 2)), ((scrnheight / 2) - (height / 2)), width,
 						height, null);
@@ -418,7 +406,8 @@ public class SwingUI extends JFrame implements IGUI {
 			graphics.drawString(this.getTitle(), 16, 16);
 
 		} else {
-			graphics.drawImage(frame, 0, 0, NES_WIDTH * screenScaleFactor, NES_HEIGHT * screenScaleFactor, null);
+			graphics.drawImage(frame, 0, 0, nes.getFrameManager().getWidth() * screenScaleFactor,
+					nes.getFrameManager().getHeight() * screenScaleFactor, null);
 		}
 
 		graphics.dispose();
@@ -495,35 +484,6 @@ public class SwingUI extends JFrame implements IGUI {
 	}
 
 	@Override
-	public synchronized void setFrame(int[] nextframe, int[] bgcolors, boolean dotcrawl) {
-		// todo: stop running video filters while paused!
-		// also move video filters into a worker thread because they
-		// don't really depend on emulation state at all. Yes this is going to
-		// cause more lag but it will hopefully get back up to playable speed
-		// with NTSC filter
-
-		frametimes[frametimeptr] = nes.getFrameTime();
-		++frametimeptr;
-		frametimeptr %= frametimes.length;
-
-		if (frametimeptr == 0) {
-			long averageframes = 0;
-			for (long l : frametimes) {
-				averageframes += l;
-			}
-			averageframes /= frametimes.length;
-			fps = 1E9 / averageframes;
-			this.setTitle(
-					String.format("jnesulator - %s, %2.2f fps" + ((frameskip > 0) ? " frameskip " + frameskip : ""),
-							nes.getCurrentRomName(), fps));
-		}
-		if (nes.framecount % (frameskip + 1) == 0) {
-			frame = renderer.render(nextframe, bgcolors, dotcrawl);
-			render();
-		}
-	}
-
-	@Override
 	public void setNES(NES nes) {
 		this.nes = nes;
 	}
@@ -534,24 +494,11 @@ public class SwingUI extends JFrame implements IGUI {
 		}
 		screenScaleFactor = PrefsSingleton.get().getInt("screenScaling", 2);
 		smoothScale = PrefsSingleton.get().getBoolean("smoothScaling", false);
-		if (PrefsSingleton.get().getBoolean("TVEmulation", false)) {
-			renderer = new NTSCRenderer();
-			NES_WIDTH = 302;
-		} else {
-			renderer = new RGBRenderer();
-			NES_WIDTH = 256;
-		}
-		if (PrefsSingleton.get().getInt("region", 0) > 1) {
-			NES_HEIGHT = 240;
-			renderer.setClip(0);
-		} else {
-			NES_HEIGHT = 224;
-			renderer.setClip(8);
-		}
 
 		// Create canvas for painting
 		canvas = new Canvas();
-		canvas.setSize(NES_WIDTH * screenScaleFactor, NES_HEIGHT * screenScaleFactor);
+		canvas.setSize(nes.getFrameManager().getWidth() * screenScaleFactor,
+				nes.getFrameManager().getHeight() * screenScaleFactor);
 		canvas.setEnabled(false); // otherwise it steals input events.
 		// Add canvas to game window
 		this.add(canvas);
@@ -594,7 +541,8 @@ public class SwingUI extends JFrame implements IGUI {
 		if (inFullScreen) {
 			this.dispose();
 			gd.setFullScreenWindow(null);
-			canvas.setSize(NES_HEIGHT * screenScaleFactor, NES_WIDTH * screenScaleFactor);
+			canvas.setSize(nes.getFrameManager().getHeight() * screenScaleFactor,
+					nes.getFrameManager().getWidth() * screenScaleFactor);
 			this.setUndecorated(false);
 			this.setVisible(true);
 			inFullScreen = false;

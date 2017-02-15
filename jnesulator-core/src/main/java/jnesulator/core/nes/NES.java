@@ -10,6 +10,7 @@ import jnesulator.core.nes.ui.FrameLimiterImpl;
 import jnesulator.core.nes.ui.IController;
 import jnesulator.core.nes.ui.IFrameLimiter;
 import jnesulator.core.nes.ui.IGUI;
+import jnesulator.core.nes.video.FrameManager;
 
 public class NES {
 	private IMapper mapper;
@@ -29,12 +30,14 @@ public class NES {
 	// Pro Action Replay device
 	private ActionReplay actionReplay;
 	private IAudioConsumer audioConsumer;
+	private FrameManager frameManager;
 
 	public NES(IGUI gui, IAudioConsumer audioConsumer) {
 		cpu = new CPU(this);
 		cpuram = new CPURAM(this);
 		apu = new APU(this);
 		ppu = new PPU(this);
+		frameManager = new FrameManager(this);
 
 		this.gui = gui;
 		this.audioConsumer = audioConsumer;
@@ -82,8 +85,16 @@ public class NES {
 		return curRomName;
 	}
 
+	public FrameManager getFrameManager() {
+		return frameManager;
+	}
+
 	public long getFrameTime() {
 		return frameDoneTime;
+	}
+
+	public IGUI getGUI() {
+		return gui;
 	}
 
 	public IMapper getMapper() {
@@ -234,7 +245,8 @@ public class NES {
 			} else {
 				limiter.sleepFixed();
 				if (ppu != null && framecount > 1) {
-					gui.render();
+					// TODO: Not sure why we're trying to render here
+					// gui.render();
 				}
 			}
 		}
