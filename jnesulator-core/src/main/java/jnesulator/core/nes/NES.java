@@ -9,7 +9,6 @@ import jnesulator.core.nes.mapper.MapperLoader;
 import jnesulator.core.nes.ui.FrameLimiterImpl;
 import jnesulator.core.nes.ui.IController;
 import jnesulator.core.nes.ui.IFrameLimiter;
-import jnesulator.core.nes.ui.IGUI;
 import jnesulator.core.nes.video.FrameManager;
 
 public class NES {
@@ -18,7 +17,7 @@ public class NES {
 	private CPU cpu;
 	private CPURAM cpuram;
 	private PPU ppu;
-	private IGUI gui;
+	private ISystemIO io;
 	private IController controller1, controller2;
 	public boolean runEmulation = false;
 	private boolean dontSleep = false;
@@ -29,18 +28,16 @@ public class NES {
 	private IFrameLimiter limiter = new FrameLimiterImpl(this, 16639267);
 	// Pro Action Replay device
 	private ActionReplay actionReplay;
-	private IAudioConsumer audioConsumer;
 	private FrameManager frameManager;
 
-	public NES(IGUI gui, IAudioConsumer audioConsumer) {
+	public NES(ISystemIO io) {
 		cpu = new CPU(this);
 		cpuram = new CPURAM(this);
 		apu = new APU(this);
 		ppu = new PPU(this);
 		frameManager = new FrameManager(this);
 
-		this.gui = gui;
-		this.audioConsumer = audioConsumer;
+		this.io = io;
 	}
 
 	public synchronized void frameAdvance() {
@@ -62,7 +59,7 @@ public class NES {
 	}
 
 	public IAudioConsumer getAudioConsumer() {
-		return audioConsumer;
+		return io.getAudioConsumer();
 	}
 
 	public IController getcontroller1() {
@@ -93,10 +90,6 @@ public class NES {
 		return frameDoneTime;
 	}
 
-	public IGUI getGUI() {
-		return gui;
-	}
-
 	public IMapper getMapper() {
 		return mapper;
 	}
@@ -110,6 +103,10 @@ public class NES {
 			return mapper.getrominfo();
 		}
 		return null;
+	}
+
+	public ISystemIO getSystemIO() {
+		return io;
 	}
 
 	public boolean isFrameLimiterOn() {
@@ -131,12 +128,12 @@ public class NES {
 				newmapper = MapperLoader.getCorrectMapper(this, loader);
 				newmapper.loadrom(loader);
 			} catch (BadMapperException e) {
-				gui.messageBox(
+				io.onMessage(
 						"Error Loading File: ROM is" + " corrupted or uses an unsupported mapper.\n" + e.getMessage());
 				return;
 			} catch (Exception e) {
-				gui.messageBox("Error Loading File: ROM is" + " corrupted or uses an unsupported mapper.\n"
-						+ e.toString() + e.getMessage());
+				io.onMessage("Error Loading File: ROM is" + " corrupted or uses an unsupported mapper.\n" + e.toString()
+						+ e.getMessage());
 				e.printStackTrace();
 				return;
 			}
@@ -165,7 +162,7 @@ public class NES {
 			setParameters();
 			runEmulation = true;
 		} else {
-			gui.messageBox(
+			io.onMessage(
 					"Could not load file:\nFile " + filename + "\n" + "does not exist or is not a valid NES game.");
 		}
 	}
@@ -179,8 +176,8 @@ public class NES {
 	}
 
 	public void messageBox(String string) {
-		if (gui != null) {
-			gui.messageBox(string);
+		if (io != null) {
+			io.onMessage(string);
 		}
 	}
 
@@ -246,7 +243,7 @@ public class NES {
 				limiter.sleepFixed();
 				if (ppu != null && framecount > 1) {
 					// TODO: Not sure why we're trying to render here
-					// gui.render();
+					// io.render();
 				}
 			}
 		}
@@ -277,7 +274,7 @@ public class NES {
 		// System.err.println("log on");
 		// }
 		// render the frame
-		ppu.renderFrame(gui);
+		ppu.renderFrame(io);
 		if ((framecount & 2047) == 0) {
 			// save sram every 30 seconds or so
 			saveSRAM(true);

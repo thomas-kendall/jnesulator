@@ -72,7 +72,7 @@ public class FrameManager {
 		}
 		if (nes.framecount % (frameskip + 1) == 0) {
 			frame = renderer.render(nextframe, bgcolors, dotcrawl);
-			nes.getGUI().render(frame);
+			nes.getSystemIO().onVideoFrame(frame);
 		}
 	}
 }

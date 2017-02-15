@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
 import jnesulator.core.nes.ui.DebugUI;
-import jnesulator.core.nes.ui.IGUI;
 
 public class PPU {
 	private static final boolean PPUDEBUG = PrefsSingleton.get().getBoolean("ntView", false);
@@ -600,14 +599,14 @@ public class PPU {
 	 * dot crawl flag and BG color to be displayed around edges which are needed
 	 * for the NTSC renderer.
 	 *
-	 * @param gui
-	 *            the GUI window to render to
+	 * @param io
+	 *            the interface to render to
 	 */
-	public void renderFrame(IGUI gui) {
+	public void renderFrame(ISystemIO io) {
 		if (PPUDEBUG) {
 			debugDraw();
 		}
-		if (gui != null) {
+		if (io != null) {
 			nes.getFrameManager().setFrame(bitmap, bgcolors, dotcrawl);
 		}
 

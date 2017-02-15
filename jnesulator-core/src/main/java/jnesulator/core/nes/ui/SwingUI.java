@@ -40,6 +40,7 @@ import javax.swing.KeyStroke;
 import javax.swing.TransferHandler;
 
 import jnesulator.core.nes.FileUtils;
+import jnesulator.core.nes.ISystemIO;
 import jnesulator.core.nes.NES;
 import jnesulator.core.nes.PrefsSingleton;
 import jnesulator.core.nes.audio.IAudioConsumer;
@@ -47,7 +48,7 @@ import jnesulator.core.nes.audio.SwingAudioImpl;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.cheats.ActionReplayGui;
 
-public class SwingUI extends JFrame implements IGUI, Runnable {
+public class SwingUI extends JFrame implements ISystemIO, Runnable {
 
 	public class AL implements ActionListener, WindowListener {
 
@@ -69,7 +70,7 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 			} else if (arg0.getActionCommand().equals("Fast Forward")) {
 				nes.toggleFrameLimiter();
 			} else if (arg0.getActionCommand().equals("About")) {
-				messageBox("jnesulator\n"
+				onMessage("jnesulator\n"
 						+ "Get the latest version and report any bugs at https://github.com/thomas-kendall/jnesulator \n"
 						+ "\n" + "This program is free software licensed under the GPL version 3, and comes with \n"
 						+ "NO WARRANTY of any kind. (but if something's broken, please report it). \n"
@@ -77,7 +78,7 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 			} else if (arg0.getActionCommand().equals("ROM Info")) {
 				String info = nes.getrominfo();
 				if (info != null) {
-					messageBox(info);
+					onMessage(info);
 				}
 			} else if (arg0.getActionCommand().equals("Open ROM")) {
 				loadROM();
@@ -152,9 +153,11 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 
 	int bgcolor;
 
+	private IAudioConsumer audioConsumer;
+
 	public SwingUI(String[] args) {
-		IAudioConsumer audioConsumer = new SwingAudioImpl();
-		nes = new NES(this, audioConsumer);
+		audioConsumer = new SwingAudioImpl();
+		nes = new NES(this);
 		screenScaleFactor = PrefsSingleton.get().getInt("screenScaling", 2);
 		padController1 = new ControllerImpl(this, 0);
 		padController2 = new ControllerImpl(this, 1);
@@ -272,7 +275,7 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 		File outputFile = new File(new File(zipName).getParent() + File.separator
 				+ FileUtils.stripExtension(new File(zipName).getName()) + " - " + romName);
 		if (outputFile.exists()) {
-			this.messageBox("Cannot extract file. File " + outputFile.getCanonicalPath() + " already exists.");
+			this.onMessage("Cannot extract file. File " + outputFile.getCanonicalPath() + " already exists.");
 			zipStream.close();
 			return null;
 		}
@@ -285,6 +288,11 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 		zipStream.close();
 		fos.close();
 		return outputFile;
+	}
+
+	@Override
+	public IAudioConsumer getAudioConsumer() {
+		return audioConsumer;
 	}
 
 	private double getmaxscale(int width, int height) {
@@ -348,7 +356,7 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 			try {
 				loadRomFromZip(path);
 			} catch (IOException ex) {
-				this.messageBox(
+				this.onMessage(
 						"Could not load file:\nFile does not exist or is not a valid NES game.\n" + ex.getMessage());
 			}
 		} else {
@@ -368,12 +376,12 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 	}
 
 	@Override
-	public void messageBox(String message) {
+	public void onMessage(String message) {
 		JOptionPane.showMessageDialog(this, message);
 	}
 
 	@Override
-	public synchronized void render(BufferedImage frame) {
+	public synchronized void onVideoFrame(BufferedImage frame) {
 		Graphics graphics = buffer.getDrawGraphics();
 		if (smoothScale) {
 			((Graphics2D) graphics).setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -544,7 +552,7 @@ public class SwingUI extends JFrame implements IGUI, Runnable {
 			if (!gd.isFullScreenSupported()) {
 				// then fullscreen will give a window the size of the screen
 				// instead
-				messageBox("Fullscreen is not supported by your OS or version of Java.");
+				onMessage("Fullscreen is not supported by your OS or version of Java.");
 			}
 			this.dispose();
 			this.setUndecorated(true);

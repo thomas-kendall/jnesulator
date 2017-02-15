@@ -18,6 +18,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import jnesulator.core.nes.FileUtils;
+import jnesulator.core.nes.ISystemIO;
 import jnesulator.core.nes.NES;
 
 public class OnScreenMenu extends StackPane {
@@ -34,7 +35,7 @@ public class OnScreenMenu extends StackPane {
 						menu.setVisible(false);
 					});
 				} catch (IOException e) {
-					gui.messageBox(e.getMessage());
+					io.onMessage(e.getMessage());
 				}
 			};
 		}
@@ -53,7 +54,7 @@ public class OnScreenMenu extends StackPane {
 					}
 					runGame(extractedFile.getCanonicalPath());
 				} catch (IOException e) {
-					gui.messageBox(e.getMessage());
+					io.onMessage(e.getMessage());
 				}
 			};
 		}
@@ -83,7 +84,7 @@ public class OnScreenMenu extends StackPane {
 	}
 
 	private NES nes;
-	private IGUI gui;
+	private ISystemIO io;
 	private ListView<MenuAction> menu;
 	private ListView<MenuAction> gameMenu;
 
@@ -144,7 +145,7 @@ public class OnScreenMenu extends StackPane {
 			outputFile = new File(new File(zipName).getCanonicalFile().getParent() + File.separator
 					+ FileUtils.stripExtension(new File(zipName).getName()) + " - " + romName);
 			if (outputFile.exists() && !outputFile.delete()) {
-				gui.messageBox("Cannot extract file. File " + outputFile.getCanonicalPath() + " already exists.");
+				io.onMessage("Cannot extract file. File " + outputFile.getCanonicalPath() + " already exists.");
 				zipStream.close();
 				return null;
 			}
@@ -201,7 +202,7 @@ public class OnScreenMenu extends StackPane {
 			try {
 				loadRomFromZip(path);
 			} catch (IOException ex) {
-				gui.messageBox(
+				io.onMessage(
 						"Could not load file:\nFile does not exist or is not a valid NES game.\n" + ex.getMessage());
 			}
 		} else {
