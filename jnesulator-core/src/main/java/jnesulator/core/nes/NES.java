@@ -3,12 +3,10 @@ package jnesulator.core.nes;
 import javafx.application.Platform;
 import jnesulator.core.nes.audio.AudioFrameBuffer;
 import jnesulator.core.nes.cheats.ActionReplay;
+import jnesulator.core.nes.io.IController;
 import jnesulator.core.nes.mapper.BadMapperException;
 import jnesulator.core.nes.mapper.IMapper;
 import jnesulator.core.nes.mapper.MapperLoader;
-import jnesulator.core.nes.ui.FrameLimiterImpl;
-import jnesulator.core.nes.ui.IController;
-import jnesulator.core.nes.ui.IFrameLimiter;
 import jnesulator.core.nes.video.FrameManager;
 
 // TODO: Extract an interface that can be used with the outside world. Things like start/pause/reset/loadROM/etc
@@ -27,20 +25,21 @@ public class NES {
 	public long frameStartTime, framecount, frameDoneTime;
 	private boolean frameLimiterOn = true;
 	private String curRomPath, curRomName;
-	private IFrameLimiter limiter = new FrameLimiterImpl(this, 16639267);
+	private FrameLimiter frameLimiter;
 	// Pro Action Replay device
 	private ActionReplay actionReplay;
 	private FrameManager frameManager;
 
 	public NES(ISystemIO io) {
+		this.io = io;
+
 		cpu = new CPU(this);
 		cpuram = new CPURAM(this);
 		apu = new APU(this);
 		this.audioFrameBuffer = new AudioFrameBuffer(this);
 		ppu = new PPU(this);
 		frameManager = new FrameManager(this);
-
-		this.io = io;
+		frameLimiter = new FrameLimiter(this, 16639267);
 	}
 
 	public synchronized void frameAdvance() {
@@ -232,11 +231,11 @@ public class NES {
 				actionReplay.applyPatches();
 				runframe();
 				if (frameLimiterOn && !dontSleep) {
-					limiter.sleep();
+					frameLimiter.sleep();
 				}
 				frameDoneTime = System.nanoTime() - frameStartTime;
 			} else {
-				limiter.sleepFixed();
+				frameLimiter.sleepFixed();
 				if (ppu != null && framecount > 1) {
 					// TODO: Not sure why we're trying to render here
 					// io.render();
@@ -301,15 +300,15 @@ public class NES {
 		if (ppu != null) {
 			ppu.setParameters();
 		}
-		if (limiter != null && mapper != null) {
+		if (frameLimiter != null && mapper != null) {
 			switch (mapper.getTVType()) {
 			case NTSC:
 			default:
-				limiter.setInterval(16639267);
+				frameLimiter.setInterval(16639267);
 				break;
 			case PAL:
 			case DENDY:
-				limiter.setInterval(19997200);
+				frameLimiter.setInterval(19997200);
 			}
 		}
 	}

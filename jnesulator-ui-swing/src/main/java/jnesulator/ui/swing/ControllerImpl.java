@@ -20,7 +20,7 @@ import java.util.prefs.Preferences;
 
 import javafx.scene.Scene;
 import jnesulator.core.nes.PrefsSingleton;
-import jnesulator.core.nes.ui.IController;
+import jnesulator.core.nes.io.IController;
 import net.java.games.input.Component;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;

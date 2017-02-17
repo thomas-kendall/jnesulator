@@ -1,9 +1,6 @@
-package jnesulator.core.nes.ui;
+package jnesulator.core.nes;
 
-import jnesulator.core.nes.NES;
-import jnesulator.core.nes.PrefsSingleton;
-
-public class FrameLimiterImpl implements IFrameLimiter {
+public class FrameLimiter {
 
 	public static void forceHighResolutionTimer() {
 		// UGLY HACK ALERT: Just realized why sleep() rounds to nearest
@@ -30,18 +27,16 @@ public class FrameLimiterImpl implements IFrameLimiter {
 	private long sleepingtest = 0;
 	private long FRAME_NS;
 
-	public FrameLimiterImpl(NES nes, long framens) {
+	public FrameLimiter(NES nes, long framens) {
 		this.nes = nes;
 		FRAME_NS = framens;
 		// forceHighResolutionTimer();
 	}
 
-	@Override
 	public void setInterval(long ns) {
 		FRAME_NS = ns;
 	}
 
-	@Override
 	public void sleep() {
 		// Frame Limiter
 		if (!PrefsSingleton.get().getBoolean("Sleep", true)) {
@@ -69,14 +64,12 @@ public class FrameLimiterImpl implements IFrameLimiter {
 		}
 	}
 
-	@Override
 	public void sleepFixed() {
 		try {
 			// sleep for 16 ms
 			Thread.sleep(16);
 		} catch (InterruptedException ex) {
 		}
-
 	}
 
 }

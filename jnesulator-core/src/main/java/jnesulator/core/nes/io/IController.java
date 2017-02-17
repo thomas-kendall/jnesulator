@@ -1,4 +1,4 @@
-package jnesulator.core.nes.ui;
+package jnesulator.core.nes.io;
 
 public interface IController {
 

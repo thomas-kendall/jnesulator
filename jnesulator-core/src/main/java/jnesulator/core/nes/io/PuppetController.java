@@ -1,4 +1,4 @@
-package jnesulator.core.nes.ui;
+package jnesulator.core.nes.io;
 
 import static jnesulator.core.nes.Utils.BIT0;
 import static jnesulator.core.nes.Utils.BIT1;
