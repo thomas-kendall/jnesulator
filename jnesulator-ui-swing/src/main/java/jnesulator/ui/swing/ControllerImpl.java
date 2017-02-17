@@ -1,4 +1,4 @@
-package jnesulator.core.nes.ui;
+package jnesulator.ui.swing;
 
 import static jnesulator.core.nes.Utils.BIT0;
 import static jnesulator.core.nes.Utils.BIT1;
@@ -20,6 +20,7 @@ import java.util.prefs.Preferences;
 
 import javafx.scene.Scene;
 import jnesulator.core.nes.PrefsSingleton;
+import jnesulator.core.nes.ui.IController;
 import net.java.games.input.Component;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;

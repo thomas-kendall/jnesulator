@@ -1,4 +1,4 @@
-package jnesulator.core.nes.ui;
+package jnesulator.ui.swing;
 
 import java.awt.Dimension;
 import java.awt.Graphics;

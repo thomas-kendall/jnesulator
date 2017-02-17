@@ -1,10 +1,10 @@
-package jnesulator.core.nes;
+package jnesulator.ui.swing;
 
 import java.io.IOException;
 
 import javax.swing.UIManager;
 
-import jnesulator.core.nes.ui.SwingUI;
+import jnesulator.core.nes.JInputHelper;
 
 public class Application {
 	public static void main(String[] args) throws IOException {

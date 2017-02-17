@@ -3,8 +3,6 @@ package jnesulator.core.nes;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
-import jnesulator.core.nes.ui.DebugUI;
-
 public class PPU {
 	private static final boolean PPUDEBUG = PrefsSingleton.get().getBoolean("ntView", false);
 	private static int TYPE_INT_BGR = 4;
@@ -24,7 +22,7 @@ public class PPU {
 			bgOn, spritesOn, vblankflag, sprite0hit, spriteoverflow;
 	private int emph;
 	public int[] pal;
-	private DebugUI debuggui;
+	// private DebugUI debuggui;
 	private int vraminc = 1;
 	private BufferedImage nametableView;
 	private int[] bgcolors = new int[256];
@@ -285,7 +283,7 @@ public class PPU {
 		// }
 		// }
 		// }
-		debuggui.setFrame(nametableView);
+		// debuggui.setFrame(nametableView);
 		// debugbuff.clear();
 	}
 
@@ -631,11 +629,11 @@ public class PPU {
 		 * RockNES, MyNes use it
 		 */
 		Arrays.fill(OAM, 0xff);
-		if (PPUDEBUG) {
-			nametableView = new BufferedImage(512, 480, TYPE_INT_BGR);
-			debuggui = new DebugUI(512, 480);
-			debuggui.run();
-		}
+		// if (PPUDEBUG) {
+		// nametableView = new BufferedImage(512, 480, TYPE_INT_BGR);
+		// debuggui = new DebugUI(512, 480);
+		// debuggui.run();
+		// }
 		setParameters();
 	}
 
