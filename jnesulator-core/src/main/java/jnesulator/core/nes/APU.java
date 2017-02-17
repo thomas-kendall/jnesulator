@@ -88,7 +88,7 @@ public class APU {
 	}
 
 	public boolean bufferHasLessThan(int samples) {
-		return nes.getAudioConsumer().bufferHasLessThan(samples);
+		return nes.getAudioFrameBuffer().bufferHasLessThan(samples);
 	}
 
 	private void clockdmc() {
@@ -154,10 +154,6 @@ public class APU {
 		setvolumes();
 	}
 
-	public void destroy() {
-		nes.getAudioConsumer().destroy();
-	}
-
 	private void dmcfillbuffer() {
 		if (dmcsamplesleft > 0) {
 			dmcbuffer = nes.getCPURAM().read(dmcaddr++);
@@ -193,7 +189,7 @@ public class APU {
 	public void finishframe() {
 		updateto(cyclesperframe);
 		apucycle = 0;
-		nes.getAudioConsumer().flushFrame(nes.isFrameLimiterOn());
+		nes.getAudioFrameBuffer().flushFrame();
 	}
 
 	private int getOutputLevel() {
@@ -222,10 +218,6 @@ public class APU {
 		sample += lpaccum;
 		lpaccum -= sample * 0.9;
 		return lpaccum;
-	}
-
-	public void pause() {
-		nes.getAudioConsumer().pause();
 	}
 
 	public int read(int addr) {
@@ -269,10 +261,6 @@ public class APU {
 		dmcaddr = dmcstartaddr;
 		dmcsamplesleft = dmcsamplelength;
 		dmcsilence = false;
-	}
-
-	public void resume() {
-		nes.getAudioConsumer().resume();
 	}
 
 	private void setenvelope() {
@@ -323,15 +311,15 @@ public class APU {
 		soundFiltering = PrefsSingleton.get().getBoolean("soundFiltering", true);
 		samplerate = PrefsSingleton.get().getInt("sampleRate", 44100);
 		// if (audioConsumer != null) {
-		// nes.getAudioConsumer().destroy();
+		// nes.getAudioFrameBuffer().destroy();
 		// }
 		// audioConsumer = new SwingAudioImpl(nes, samplerate, tvtype);
 		// if (PrefsSingleton.get().getBoolean("showScope", false)) {
 		// audioConsumer = new Oscilloscope(audioConsumer);
 		// }
 		// pick the appropriate pitches and lengths for NTSC or PAL
-		nes.getAudioConsumer().destroy();
-		nes.getAudioConsumer().initialize(samplerate, tvtype);
+		// nes.getAudioFrameBuffer().destroy();
+		nes.getAudioFrameBuffer().initialize(samplerate, tvtype);
 		switch (tvtype) {
 		case NTSC:
 		default:
@@ -432,7 +420,7 @@ public class APU {
 				if ((apucycle % cyclespersample) < 1) {
 					// not quite right - there's a non-integer # cycles per
 					// sample.
-					nes.getAudioConsumer().outputSample(lowpass_filter(highpass_filter((int) (accum / remainder))));
+					nes.getAudioFrameBuffer().outputSample(lowpass_filter(highpass_filter((int) (accum / remainder))));
 					remainder = 0;
 					accum = 0;
 				}
@@ -463,7 +451,7 @@ public class APU {
 						}
 					}
 					remainder = 0;
-					nes.getAudioConsumer().outputSample(lowpass_filter(highpass_filter(mixvol)));
+					nes.getAudioFrameBuffer().outputSample(lowpass_filter(highpass_filter(mixvol)));
 				}
 				++apucycle;
 			}

@@ -1,7 +1,7 @@
 package jnesulator.core.nes;
 
 import javafx.application.Platform;
-import jnesulator.core.nes.audio.IAudioConsumer;
+import jnesulator.core.nes.audio.AudioFrameBuffer;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.mapper.BadMapperException;
 import jnesulator.core.nes.mapper.IMapper;
@@ -11,9 +11,11 @@ import jnesulator.core.nes.ui.IController;
 import jnesulator.core.nes.ui.IFrameLimiter;
 import jnesulator.core.nes.video.FrameManager;
 
+// TODO: Extract an interface that can be used with the outside world. Things like start/pause/reset/loadROM/etc
 public class NES {
 	private IMapper mapper;
 	private APU apu;
+	private AudioFrameBuffer audioFrameBuffer;
 	private CPU cpu;
 	private CPURAM cpuram;
 	private PPU ppu;
@@ -34,6 +36,7 @@ public class NES {
 		cpu = new CPU(this);
 		cpuram = new CPURAM(this);
 		apu = new APU(this);
+		this.audioFrameBuffer = new AudioFrameBuffer(this);
 		ppu = new PPU(this);
 		frameManager = new FrameManager(this);
 
@@ -58,8 +61,8 @@ public class NES {
 		return apu;
 	}
 
-	public IAudioConsumer getAudioConsumer() {
-		return io.getAudioConsumer();
+	public AudioFrameBuffer getAudioFrameBuffer() {
+		return audioFrameBuffer;
 	}
 
 	public IController getcontroller1() {
@@ -139,7 +142,6 @@ public class NES {
 			}
 			if (mapper != null) {
 				// if rom already running save its sram before closing
-				apu.destroy();
 				saveSRAM(false);
 			}
 			mapper = newmapper;
@@ -150,6 +152,8 @@ public class NES {
 			actionReplay = new ActionReplay(cpuram);
 			curRomPath = filename;
 			curRomName = FileUtils.getFilenamefromPath(filename);
+
+			io.onRomLoaded(audioFrameBuffer.getSampleRate(), audioFrameBuffer.getFps());
 
 			framecount = 0;
 			// if savestate exists, load it
@@ -182,9 +186,6 @@ public class NES {
 	}
 
 	public synchronized void pause() {
-		if (apu != null) {
-			apu.pause();
-		}
 		runEmulation = false;
 	}
 
@@ -211,8 +212,6 @@ public class NES {
 			mapper.reset();
 			cpu.reset();
 			runEmulation = true;
-			apu.pause();
-			apu.resume();
 		}
 		// reset frame counter as well because PPU is reset
 		// on Famicom, PPU is not reset when Reset is pressed
@@ -221,9 +220,6 @@ public class NES {
 	}
 
 	public synchronized void resume() {
-		if (apu != null) {
-			apu.resume();
-		}
 		if (cpu != null) {
 			runEmulation = true;
 		}

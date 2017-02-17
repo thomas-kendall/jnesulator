@@ -43,7 +43,6 @@ import jnesulator.core.nes.FileUtils;
 import jnesulator.core.nes.ISystemIO;
 import jnesulator.core.nes.NES;
 import jnesulator.core.nes.PrefsSingleton;
-import jnesulator.core.nes.audio.IAudioConsumer;
 import jnesulator.core.nes.audio.SwingAudioImpl;
 import jnesulator.core.nes.cheats.ActionReplay;
 import jnesulator.core.nes.cheats.ActionReplayGui;
@@ -151,13 +150,12 @@ public class SwingUI extends JFrame implements ISystemIO, Runnable {
 
 	private ControllerImpl padController1, padController2;
 
+	private SwingAudioImpl audio;
 	int bgcolor;
 
-	private IAudioConsumer audioConsumer;
-
 	public SwingUI(String[] args) {
-		audioConsumer = new SwingAudioImpl();
 		nes = new NES(this);
+		audio = new SwingAudioImpl();
 		screenScaleFactor = PrefsSingleton.get().getInt("screenScaling", 2);
 		padController1 = new ControllerImpl(this, 0);
 		padController2 = new ControllerImpl(this, 1);
@@ -290,11 +288,6 @@ public class SwingUI extends JFrame implements ISystemIO, Runnable {
 		return outputFile;
 	}
 
-	@Override
-	public IAudioConsumer getAudioConsumer() {
-		return audioConsumer;
-	}
-
 	private double getmaxscale(int width, int height) {
 		return Math.min(height / (double) nes.getFrameManager().getHeight(),
 				width / (double) nes.getFrameManager().getWidth());
@@ -376,8 +369,18 @@ public class SwingUI extends JFrame implements ISystemIO, Runnable {
 	}
 
 	@Override
+	public void onAudioFrame(byte[] buffer, int bufferSize) {
+		audio.onAudioFrame(buffer, bufferSize);
+	}
+
+	@Override
 	public void onMessage(String message) {
 		JOptionPane.showMessageDialog(this, message);
+	}
+
+	@Override
+	public void onRomLoaded(int audioSampleRate, double audioFramesPerSecond) {
+		audio.initialize(audioSampleRate, audioFramesPerSecond);
 	}
 
 	@Override
