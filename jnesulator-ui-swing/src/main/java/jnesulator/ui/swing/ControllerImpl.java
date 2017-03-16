@@ -1,14 +1,5 @@
 package jnesulator.ui.swing;
 
-import static jnesulator.core.nes.Utils.BIT0;
-import static jnesulator.core.nes.Utils.BIT1;
-import static jnesulator.core.nes.Utils.BIT2;
-import static jnesulator.core.nes.Utils.BIT3;
-import static jnesulator.core.nes.Utils.BIT4;
-import static jnesulator.core.nes.Utils.BIT5;
-import static jnesulator.core.nes.Utils.BIT6;
-import static jnesulator.core.nes.Utils.BIT7;
-
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
@@ -20,6 +11,8 @@ import java.util.prefs.Preferences;
 
 import javafx.scene.Scene;
 import jnesulator.core.nes.PrefsSingleton;
+import jnesulator.core.nes.io.BaseController;
+import jnesulator.core.nes.io.ControllerInput;
 import jnesulator.core.nes.io.IController;
 import net.java.games.input.Component;
 import net.java.games.input.Controller;
@@ -27,7 +20,7 @@ import net.java.games.input.ControllerEnvironment;
 import net.java.games.input.Event;
 import net.java.games.input.EventQueue;
 
-public class ControllerImpl implements IController, KeyListener {
+public class ControllerImpl extends BaseController implements IController, KeyListener {
 
 	/**
 	 * This method detects the available joysticks / gamepads on the computer
@@ -83,12 +76,8 @@ public class ControllerImpl implements IController, KeyListener {
 	private Controller gameController;
 	private Component[] buttons;
 	private ScheduledExecutorService thread = Executors.newSingleThreadScheduledExecutor();
-	private int latchbyte = 0, controllerbyte = 0, prevbyte = 0, outbyte = 0, gamepadbyte = 0;
-
-	private HashMap<Integer, Integer> m = new HashMap<>(10);
-
+	private HashMap<Integer, ControllerInput> m = new HashMap<>(10);
 	private int controllernum;
-
 	double threshold = 0.25;
 
 	public ControllerImpl(int controllernum) {
@@ -115,6 +104,10 @@ public class ControllerImpl implements IController, KeyListener {
 		return new Runnable() {
 			@Override
 			public void run() {
+				boolean upPressed = false;
+				boolean downPressed = false;
+				boolean leftPressed = false;
+				boolean rightPressed = false;
 				if (gameController != null) {
 					Event event = new Event();
 					while (!Thread.interrupted()) {
@@ -124,48 +117,85 @@ public class ControllerImpl implements IController, KeyListener {
 							Component component = event.getComponent();
 							if (component.getIdentifier() == Component.Identifier.Axis.X) {
 								if (event.getValue() > threshold) {
-									gamepadbyte |= BIT7;// left on, right off
-									gamepadbyte &= ~BIT6;
-
+									if (!rightPressed) {
+										if (leftPressed) {
+											inputRelease(ControllerInput.Left);
+											leftPressed = false;
+										}
+										inputPress(ControllerInput.Right);
+										rightPressed = true;
+									}
 								} else if (event.getValue() < -threshold) {
-									gamepadbyte |= BIT6;
-									gamepadbyte &= ~BIT7;
+									if (!leftPressed) {
+										if (rightPressed) {
+											inputRelease(ControllerInput.Right);
+											rightPressed = false;
+										}
+										inputPress(ControllerInput.Left);
+										leftPressed = true;
+									}
 								} else {
-									gamepadbyte &= ~(BIT7 | BIT6);
+									if (leftPressed) {
+										inputRelease(ControllerInput.Left);
+										leftPressed = false;
+									}
+									if (rightPressed) {
+										inputRelease(ControllerInput.Right);
+										rightPressed = false;
+									}
 								}
 							} else if (component.getIdentifier() == Component.Identifier.Axis.Y) {
 								if (event.getValue() > threshold) {
-									gamepadbyte |= BIT5;// up on, down off
-									gamepadbyte &= ~BIT4;
+									if (!upPressed) {
+										if (downPressed) {
+											inputRelease(ControllerInput.Down);
+											downPressed = false;
+										}
+										inputPress(ControllerInput.Up);
+										upPressed = true;
+									}
 								} else if (event.getValue() < -threshold) {
-									gamepadbyte |= BIT4;// down on, up off
-									gamepadbyte &= ~BIT5;
+									if (!downPressed) {
+										if (upPressed) {
+											inputRelease(ControllerInput.Up);
+											upPressed = false;
+										}
+										inputPress(ControllerInput.Down);
+										downPressed = true;
+									}
 								} else {
-									gamepadbyte &= ~(BIT4 | BIT5);
+									if (downPressed) {
+										inputRelease(ControllerInput.Down);
+										downPressed = false;
+									}
+									if (upPressed) {
+										inputRelease(ControllerInput.Up);
+										upPressed = false;
+									}
 								}
 							} else if (component == buttons[0]) {
 								if (isPressed(event)) {
-									gamepadbyte |= BIT0;
+									inputPress(ControllerInput.A);
 								} else {
-									gamepadbyte &= ~BIT0;
+									inputRelease(ControllerInput.A);
 								}
 							} else if (component == buttons[1]) {
 								if (isPressed(event)) {
-									gamepadbyte |= BIT1;
+									inputPress(ControllerInput.B);
 								} else {
-									gamepadbyte &= ~BIT1;
+									inputRelease(ControllerInput.B);
 								}
 							} else if (component == buttons[2]) {
 								if (isPressed(event)) {
-									gamepadbyte |= BIT2;
+									inputPress(ControllerInput.Select);
 								} else {
-									gamepadbyte &= ~BIT2;
+									inputRelease(ControllerInput.Select);
 								}
 							} else if (component == buttons[3]) {
 								if (isPressed(event)) {
-									gamepadbyte |= BIT3;
+									inputPress(ControllerInput.Start);
 								} else {
-									gamepadbyte &= ~BIT3;
+									inputRelease(ControllerInput.Start);
 								}
 							}
 						}
@@ -180,11 +210,6 @@ public class ControllerImpl implements IController, KeyListener {
 				}
 			}
 		};
-	}
-
-	@Override
-	public int getbyte() {
-		return outbyte;
 	}
 
 	private boolean isPressed(Event event) {
@@ -217,43 +242,19 @@ public class ControllerImpl implements IController, KeyListener {
 		// TODO Auto-generated method stub
 	}
 
-	@Override
-	public void output(boolean state) {
-		latchbyte = gamepadbyte | controllerbyte;
-	}
-
-	@Override
-	public int peekOutput() {
-		return latchbyte;
-	}
-
 	private void pressKey(int keyCode) {
-		// enable the byte of whatever is found
-		prevbyte = controllerbyte;
 		if (!m.containsKey(keyCode)) {
 			return;
 		}
-		// enable the corresponding bit to the key
-		controllerbyte |= m.get(keyCode);
-		// special case: if up and down are pressed at once, use whichever was
-		// pressed previously
-		if ((controllerbyte & (BIT4 | BIT5)) == (BIT4 | BIT5)) {
-			controllerbyte &= ~(BIT4 | BIT5);
-			controllerbyte |= (prevbyte & ~(BIT4 | BIT5));
-		}
-		// same for left and right
-		if ((controllerbyte & (BIT6 | BIT7)) == (BIT6 | BIT7)) {
-			controllerbyte &= ~(BIT6 | BIT7);
-			controllerbyte |= (prevbyte & ~(BIT6 | BIT7));
-		}
+
+		inputPress(m.get(keyCode));
 	}
 
 	private void releaseKey(int keyCode) {
-		prevbyte = controllerbyte;
 		if (!m.containsKey(keyCode)) {
 			return;
 		}
-		controllerbyte &= ~m.get(keyCode);
+		inputRelease(m.get(keyCode));
 	}
 
 	public void setButtons() {
@@ -262,25 +263,25 @@ public class ControllerImpl implements IController, KeyListener {
 		m.clear();
 		switch (controllernum) {
 		case 0:
-			m.put(prefs.getInt("keyUp1", KeyEvent.VK_UP), BIT4);
-			m.put(prefs.getInt("keyDown1", KeyEvent.VK_DOWN), BIT5);
-			m.put(prefs.getInt("keyLeft1", KeyEvent.VK_LEFT), BIT6);
-			m.put(prefs.getInt("keyRight1", KeyEvent.VK_RIGHT), BIT7);
-			m.put(prefs.getInt("keyA1", KeyEvent.VK_X), BIT0);
-			m.put(prefs.getInt("keyB1", KeyEvent.VK_Z), BIT1);
-			m.put(prefs.getInt("keySelect1", KeyEvent.VK_SHIFT), BIT2);
-			m.put(prefs.getInt("keyStart1", KeyEvent.VK_ENTER), BIT3);
+			m.put(prefs.getInt("keyUp1", KeyEvent.VK_UP), ControllerInput.Up);
+			m.put(prefs.getInt("keyDown1", KeyEvent.VK_DOWN), ControllerInput.Down);
+			m.put(prefs.getInt("keyLeft1", KeyEvent.VK_LEFT), ControllerInput.Left);
+			m.put(prefs.getInt("keyRight1", KeyEvent.VK_RIGHT), ControllerInput.Right);
+			m.put(prefs.getInt("keyA1", KeyEvent.VK_X), ControllerInput.A);
+			m.put(prefs.getInt("keyB1", KeyEvent.VK_Z), ControllerInput.B);
+			m.put(prefs.getInt("keySelect1", KeyEvent.VK_SHIFT), ControllerInput.Select);
+			m.put(prefs.getInt("keyStart1", KeyEvent.VK_ENTER), ControllerInput.Start);
 			break;
 		case 1:
 		default:
-			m.put(prefs.getInt("keyUp2", KeyEvent.VK_W), BIT4);
-			m.put(prefs.getInt("keyDown2", KeyEvent.VK_S), BIT5);
-			m.put(prefs.getInt("keyLeft2", KeyEvent.VK_A), BIT6);
-			m.put(prefs.getInt("keyRight2", KeyEvent.VK_D), BIT7);
-			m.put(prefs.getInt("keyA2", KeyEvent.VK_G), BIT0);
-			m.put(prefs.getInt("keyB2", KeyEvent.VK_F), BIT1);
-			m.put(prefs.getInt("keySelect2", KeyEvent.VK_R), BIT2);
-			m.put(prefs.getInt("keyStart2", KeyEvent.VK_T), BIT3);
+			m.put(prefs.getInt("keyUp2", KeyEvent.VK_W), ControllerInput.Up);
+			m.put(prefs.getInt("keyDown2", KeyEvent.VK_S), ControllerInput.Down);
+			m.put(prefs.getInt("keyLeft2", KeyEvent.VK_A), ControllerInput.Left);
+			m.put(prefs.getInt("keyRight2", KeyEvent.VK_D), ControllerInput.Right);
+			m.put(prefs.getInt("keyA2", KeyEvent.VK_G), ControllerInput.A);
+			m.put(prefs.getInt("keyB2", KeyEvent.VK_F), ControllerInput.B);
+			m.put(prefs.getInt("keySelect2", KeyEvent.VK_R), ControllerInput.Select);
+			m.put(prefs.getInt("keyStart2", KeyEvent.VK_T), ControllerInput.Start);
 			break;
 
 		}
@@ -314,12 +315,5 @@ public class ControllerImpl implements IController, KeyListener {
 	 */
 	public void stopEventQueue() {
 		thread.shutdownNow();
-	}
-
-	@Override
-	public void strobe() {
-		// shifts a byte out
-		outbyte = latchbyte & 1;
-		latchbyte = ((latchbyte >> 1) | 0x100);
 	}
 }
